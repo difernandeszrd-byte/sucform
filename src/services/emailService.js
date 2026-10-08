@@ -287,13 +287,18 @@ export async function sendConfirmationEmail(participantData) {
       body: JSON.stringify(participantData),
     });
 
+    let apiErrorMsg = null;
     if (res.ok) {
       const data = await res.json();
       console.log(`✅ E-mail de confirmação enviado via rota serverless /api/send-email! Provider: ${data.provider || 'default'}`);
       return { success: true, method: 'api', data };
+    } else {
+      const errData = await res.json().catch(() => ({}));
+      apiErrorMsg = errData.error || `Erro HTTP ${res.status} ao enviar e-mail`;
+      console.warn('⚠️ Erro na resposta da API /api/send-email:', apiErrorMsg);
     }
-  } catch {
-    // Rota serverless não disponível no ambiente de dev estático puro (Vite)
+  } catch (err) {
+    console.warn('⚠️ Exceção ao conectar com /api/send-email:', err);
   }
 
   // 2. Fallback Dev Direct: Tenta enviar via Gmail OAuth2 REST API no navegador se VITE_GMAIL_* estiverem definidos
@@ -339,7 +344,11 @@ export async function sendConfirmationEmail(participantData) {
   }
 
   console.info('ℹ️ Nenhuma credencial válida de e-mail (Gmail OAuth2 ou Resend) foi encontrada.');
-  return { success: false, reason: 'not_configured', message: 'Credenciais de e-mail não configuradas.' };
+  return {
+    success: false,
+    reason: 'not_configured',
+    message: apiErrorMsg || 'Credenciais de e-mail não configuradas no servidor.',
+  };
 }
 
 
