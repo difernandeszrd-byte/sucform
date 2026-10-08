@@ -155,7 +155,9 @@ export default async function handler(req, res) {
       }
     } catch (gmailError) {
       console.error('❌ Erro ao enviar e-mail via Gmail OAuth2:', gmailError.message);
-      // Caso ocorra excecao e exista Resend API Key, tenta o fallback
+      if (!process.env.RESEND_API_KEY) {
+        return res.status(500).json({ error: `Erro no envio via Gmail: ${gmailError.message}` });
+      }
     }
   }
 
