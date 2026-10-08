@@ -99,15 +99,15 @@ export default function InscricaoForm() {
 
       const novaInscricao = {
         cpf: cpfLimpo,
-        nome: data.nome.trim(),
-        email: data.email.trim(),
-        estado_civil: data.estado_civil,
-        sexo: data.sexo,
-        data_nascimento: data.data_nascimento,
-        endereco: data.endereco,
-        bairro: data.bairro,
-        cidade_estado: data.cidade_estado,
-        telefone: data.telefone,
+        nome: (data.nome || '').trim(),
+        email: (data.email || '').trim(),
+        estado_civil: data.estado_civil || '',
+        sexo: data.sexo || '',
+        data_nascimento: data.data_nascimento || '',
+        endereco: data.endereco || '',
+        bairro: data.bairro || '',
+        cidade_estado: data.cidade_estado || '',
+        telefone: data.telefone || '',
         idade,
         chefe_de_equipe: data.chefe_de_equipe === 'sim',
       };
@@ -115,14 +115,20 @@ export default function InscricaoForm() {
       await createInscricao(novaInscricao);
 
       // Envia o e-mail de notificação de confirmação de cadastro
-      const emailResult = await sendConfirmationEmail(novaInscricao);
+      let emailResult = null;
+      try {
+        emailResult = await sendConfirmationEmail(novaInscricao);
+      } catch (eMailErr) {
+        console.warn('Falha no envio de e-mail:', eMailErr);
+        emailResult = { success: false, message: eMailErr.message };
+      }
 
       setSubmittedData({ ...novaInscricao, emailResult });
       toast.success('Inscrição realizada com sucesso! 🎉');
       reset();
     } catch (err) {
-      console.error(err);
-      toast.error('Erro ao salvar inscrição. Tente novamente.');
+      console.error('Erro detalhado ao salvar inscrição:', err);
+      toast.error(`Erro: ${err.message || 'Erro ao salvar inscrição. Tente novamente.'}`);
     } finally {
       setLoading(false);
     }
