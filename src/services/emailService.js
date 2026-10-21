@@ -280,6 +280,7 @@ export async function sendConfirmationEmail(participantData) {
   }
 
   // 1. Tenta rota serverless /api/send-email (Processa Gmail OAuth2 ou Resend no backend)
+  let apiErrorMsg = null;
   try {
     const res = await fetch('/api/send-email', {
       method: 'POST',
@@ -287,7 +288,6 @@ export async function sendConfirmationEmail(participantData) {
       body: JSON.stringify(participantData),
     });
 
-    let apiErrorMsg = null;
     if (res.ok) {
       const data = await res.json();
       console.log(`✅ E-mail de confirmação enviado via rota serverless /api/send-email! Provider: ${data.provider || 'default'}`);
@@ -296,8 +296,13 @@ export async function sendConfirmationEmail(participantData) {
       const errData = await res.json().catch(() => ({}));
       apiErrorMsg = errData.error || `Erro HTTP ${res.status} ao enviar e-mail`;
       console.warn('⚠️ Erro na resposta da API /api/send-email:', apiErrorMsg);
+      // Se o servidor respondeu mas houve erro de config, retornar imediatamente
+      if (res.status === 500 || res.status === 401) {
+        return { success: false, reason: 'api_error', message: apiErrorMsg };
+      }
     }
   } catch (err) {
+    apiErrorMsg = err.message || 'Falha de conexão com o servidor';
     console.warn('⚠️ Exceção ao conectar com /api/send-email:', err);
   }
 
@@ -350,5 +355,6 @@ export async function sendConfirmationEmail(participantData) {
     message: apiErrorMsg || 'Credenciais de e-mail não configuradas no servidor.',
   };
 }
+
 
 
