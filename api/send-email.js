@@ -117,7 +117,7 @@ export default async function handler(req, res) {
       }
 
       const accessToken = tokenData.access_token;
-      const senderName = process.env.GMAIL_FROM_NAME || 'Semana Universitária';
+      const senderName = 'Semana Universitária Cajuruense';
 
       const rawMessage = [
         `From: "${senderName}" <${gmailUser}>`,
