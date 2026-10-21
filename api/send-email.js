@@ -118,9 +118,10 @@ export default async function handler(req, res) {
 
       const accessToken = tokenData.access_token;
       const senderName = 'Semana Universitária Cajuruense';
+      const encodedSenderName = `=?utf-8?B?${Buffer.from(senderName).toString('base64')}?=`;
 
       const rawMessage = [
-        `From: "${senderName}" <${gmailUser}>`,
+        `From: ${encodedSenderName} <${gmailUser}>`,
         `To: ${email}`,
         `Subject: =?utf-8?B?${Buffer.from(subject).toString('base64')}?=`,
         'MIME-Version: 1.0',
