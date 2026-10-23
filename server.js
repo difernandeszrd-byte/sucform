@@ -26,13 +26,16 @@ app.use(express.json());
 // ── Health-check (útil para diagnóstico no EasyPanel) ──
 app.get('/api/health', (_req, res) => {
   const hasGmail = !!(process.env.GMAIL_USER && process.env.GMAIL_CLIENT_ID && process.env.GMAIL_REFRESH_TOKEN);
-  const hasSupabase = !!(process.env.VITE_SUPABASE_URL && process.env.VITE_SUPABASE_PUBLISHABLE_KEY);
+  const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://hnqzpwxdarllezyhijqh.supabase.co';
+  const supabaseKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_5e8E8brZs6dS08og8slVPQ_durURMQH';
+  const hasSupabase = !!(supabaseUrl && supabaseKey);
   res.json({
     status: 'ok',
     providers: {
       gmail: hasGmail,
       supabase: hasSupabase,
     },
+    supabaseUrl: supabaseUrl,
     env: process.env.NODE_ENV || 'development',
   });
 });

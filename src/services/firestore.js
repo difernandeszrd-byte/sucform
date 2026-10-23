@@ -26,7 +26,6 @@ function saveLocalInscricoes(list) {
 // ── Inscrições ───────────────────────────────────────────────────────────────
 
 export async function checkCPFExists(cpf) {
-  // 1. Tenta Supabase
   if (supabase) {
     try {
       const { data, error } = await supabase
@@ -34,99 +33,102 @@ export async function checkCPFExists(cpf) {
         .select('id')
         .eq('cpf', cpf)
         .limit(1);
-      if (!error) return data.length > 0;
+      if (!error) return data && data.length > 0;
       console.warn('⚠️ Supabase checkCPF error:', error.message);
     } catch (e) {
       console.warn('⚠️ Supabase checkCPF exception:', e.message);
     }
   }
 
-  // 2. Fallback localStorage
+  // Fallback localStorage caso Supabase esteja temporariamente indisponível
   const list = getLocalInscricoes();
   return list.some(item => item.cpf === cpf);
 }
 
 export async function createInscricao(data) {
-  // 1. Tenta Supabase
-  if (supabase) {
-    try {
-      const { data: inserted, error } = await supabase
-        .from(SUPABASE_TABLE)
-        .insert([{ ...data, created_at: new Date().toISOString() }])
-        .select()
-        .single();
-      if (!error) {
-        console.log('✅ Inscrição salva no Supabase:', inserted);
-        return inserted;
-      }
-      console.error('❌ Supabase createInscricao error:', error.message);
-      throw new Error(`Erro no banco de dados (Supabase): ${error.message}`);
-    } catch (e) {
-      console.error('❌ Supabase createInscricao exception:', e.message);
-      if (e.message?.includes('Supabase')) {
-        throw e;
-      }
-    }
+  if (!supabase) {
+    console.error('❌ Supabase não configurado ou cliente nulo.');
+    throw new Error('Banco de dados (Supabase) não configurado. Verifique as credenciais.');
   }
 
-  // 2. Fallback localStorage (apenas quando Supabase não estiver configurado)
-  console.warn('⚠️ Supabase não configurado. Salvando no localStorage.');
-  const list = getLocalInscricoes();
-  const newItem = {
+  const payload = {
     ...data,
-    id: 'loc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
     created_at: new Date().toISOString(),
   };
-  list.unshift(newItem);
-  saveLocalInscricoes(list);
-  return newItem;
+
+  const { data: inserted, error } = await supabase
+    .from(SUPABASE_TABLE)
+    .insert([payload])
+    .select()
+    .single();
+
+  if (error) {
+    console.error('❌ Supabase createInscricao error:', error);
+    throw new Error(`Erro ao salvar no banco de dados: ${error.message}`);
+  }
+
+  console.log('✅ Inscrição salva no Supabase com sucesso:', inserted);
+
+  // Guarda uma cópia de segurança no localStorage do usuário
+  try {
+    const list = getLocalInscricoes();
+    list.unshift(inserted || payload);
+    saveLocalInscricoes(list);
+  } catch (err) {
+    console.warn('Aviso ao salvar cópia local:', err);
+  }
+
+  return inserted;
 }
 
 export async function getInscricoes() {
-  // 1. Tenta Supabase
   if (supabase) {
     try {
       const { data, error } = await supabase
         .from(SUPABASE_TABLE)
         .select('*')
         .order('created_at', { ascending: false });
-      if (!error) {
-        console.log('✅ Inscrições carregadas do Supabase.');
+
+      if (!error && Array.isArray(data)) {
+        console.log(`✅ ${data.length} inscrições carregadas do Supabase.`);
         return data;
       }
-      console.warn('⚠️ Supabase getInscricoes error:', error.message);
+      console.warn('⚠️ Supabase getInscricoes error:', error?.message);
     } catch (e) {
       console.warn('⚠️ Supabase getInscricoes exception:', e.message);
     }
   }
 
-  // 2. Fallback localStorage
+  // Fallback localStorage
   return getLocalInscricoes();
 }
 
 export async function deleteInscricao(id) {
-  // 1. Tenta Supabase
   if (supabase) {
     try {
       const { error } = await supabase
         .from(SUPABASE_TABLE)
         .delete()
         .eq('id', id);
+
       if (!error) {
         console.log('✅ Inscrição deletada do Supabase.');
-        return;
+      } else {
+        console.warn('⚠️ Supabase deleteInscricao error:', error.message);
+        throw new Error(`Erro ao excluir do Supabase: ${error.message}`);
       }
-      console.warn('⚠️ Supabase deleteInscricao error:', error.message);
     } catch (e) {
       console.warn('⚠️ Supabase deleteInscricao exception:', e.message);
+      throw e;
     }
   }
 
-  // 2. Fallback localStorage
+  // Atualiza também cache local
   let list = getLocalInscricoes();
   list = list.filter(item => item.id !== id);
   saveLocalInscricoes(list);
 }
+
 
 // ── Configuração (inscrições abertas/fechadas) ───────────────────────────────
 

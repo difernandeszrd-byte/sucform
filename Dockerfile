@@ -1,4 +1,4 @@
-# cache-bust: 2026-10-23-v3
+# cache-bust: 2026-10-23-v5
 # Usando node:20-slim (Debian/glibc) - compatível com binários nativos do Rolldown/Vite8
 FROM node:20-slim
 

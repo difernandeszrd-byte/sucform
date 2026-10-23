@@ -3,16 +3,16 @@ import { createClient } from '@supabase/supabase-js';
 // Resolução de variáveis:
 // 1. window.__ENV__ (injetado em tempo de execução pelo server.js no Easypanel)
 // 2. import.meta.env (embutido em tempo de build pelo Vite)
-// 3. Fallback das credenciais do projeto
-const getEnv = (key, fallback = '') => {
-  if (typeof window !== 'undefined' && window.__ENV__ && window.__ENV__[key]) {
-    return window.__ENV__[key];
-  }
-  return import.meta.env[key] || fallback;
-};
+// 3. Fallback das credenciais oficiais do projeto Supabase
+const supabaseUrl =
+  (typeof window !== 'undefined' && window.__ENV__?.VITE_SUPABASE_URL) ||
+  import.meta.env.VITE_SUPABASE_URL ||
+  'https://hnqzpwxdarllezyhijqh.supabase.co';
 
-const supabaseUrl = getEnv('VITE_SUPABASE_URL', 'https://hnqzpwxdarllezyhijqh.supabase.co');
-const supabaseAnonKey = getEnv('VITE_SUPABASE_PUBLISHABLE_KEY', 'sb_publishable_5e8E8brZs6dS08og8slVPQ_durURMQH');
+const supabaseAnonKey =
+  (typeof window !== 'undefined' && window.__ENV__?.VITE_SUPABASE_PUBLISHABLE_KEY) ||
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+  'sb_publishable_5e8E8brZs6dS08og8slVPQ_durURMQH';
 
 const isPlaceholder = (val) =>
   !val ||
@@ -32,13 +32,19 @@ let supabase = null;
 
 if (hasSupabaseConfig) {
   try {
-    supabase = createClient(supabaseUrl, supabaseAnonKey);
-    console.log('✅ Supabase inicializado com sucesso.');
+    supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    });
+    console.log('✅ Supabase inicializado com sucesso para:', supabaseUrl);
   } catch (e) {
-    console.warn('⚠️ Falha ao inicializar o Supabase:', e);
+    console.error('❌ Falha ao inicializar o Supabase:', e);
   }
 } else {
-  console.warn('⚠️ Supabase não configurado. Verifique VITE_SUPABASE_URL e VITE_SUPABASE_PUBLISHABLE_KEY.');
+  console.error('❌ Supabase não configurado. Verifique VITE_SUPABASE_URL e VITE_SUPABASE_PUBLISHABLE_KEY.');
 }
 
 export { supabase };
+
