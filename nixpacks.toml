@@ -2,11 +2,21 @@
 NIXPACKS_NODE_VERSION = "20"
 PORT = "3000"
 
+# Pacotes explícitos: apenas node + npm, sem caddy
+[phases.setup]
+nixPkgs = ["nodejs_20", "npm-9_x"]
+
 [phases.install]
 cmds = ["NODE_ENV=development npm ci"]
 
 [phases.build]
 cmds = ["npm run build"]
+
+# Desativa o Caddy explicitamente (nixpacks detecta public/ e tenta adicionar caddy
+# automaticamente, causando conflito de porta com node server.js)
+[phases.caddy]
+nixPkgs = []
+cmds = []
 
 [start]
 cmd = "node server.js"
