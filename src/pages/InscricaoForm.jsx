@@ -10,6 +10,7 @@ import {
   getInscricoesAtivas,
 } from '../services/firestore';
 import { sendConfirmationEmail } from '../services/emailService';
+import { logAnalyticsEvent } from '../firebase';
 import {
   cleanCPF,
   formatCPF,
@@ -38,6 +39,7 @@ export default function InscricaoForm() {
 
   useEffect(() => {
     getInscricoesAtivas().then(setInscricoesAtivas);
+    logAnalyticsEvent('page_view', { page_title: 'Formulário de Inscrição', page_location: window.location.href });
   }, []);
 
   // Masks
@@ -85,6 +87,7 @@ export default function InscricaoForm() {
       const exists = await checkCPFExists(cpfLimpo);
       if (exists) {
         toast.error('Este CPF já está cadastrado no sistema.');
+        logAnalyticsEvent('inscricao_cpf_duplicado');
         return;
       }
 
@@ -114,10 +117,19 @@ export default function InscricaoForm() {
 
       await createInscricao(novaInscricao);
 
+      logAnalyticsEvent('inscricao_concluida', {
+        chefe_de_equipe: novaInscricao.chefe_de_equipe,
+        cidade: novaInscricao.cidade_estado,
+        sexo: novaInscricao.sexo,
+      });
+
       // Envia o e-mail de notificação de confirmação de cadastro
       let emailResult = null;
       try {
         emailResult = await sendConfirmationEmail(novaInscricao);
+        if (emailResult?.success) {
+          logAnalyticsEvent('email_confirmacao_enviado', { method: emailResult.method });
+        }
       } catch (eMailErr) {
         console.warn('Falha no envio de e-mail:', eMailErr);
         emailResult = { success: false, message: eMailErr.message };
@@ -128,6 +140,7 @@ export default function InscricaoForm() {
       reset();
     } catch (err) {
       console.error('Erro detalhado ao salvar inscrição:', err);
+      logAnalyticsEvent('inscricao_erro', { message: err.message || 'unknown' });
       toast.error(`Erro: ${err.message || 'Erro ao salvar inscrição. Tente novamente.'}`);
     } finally {
       setLoading(false);
