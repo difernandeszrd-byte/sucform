@@ -1,9 +1,13 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState } from 'react';
 
 const AdminContext = createContext(null);
 
-// Senha do admin (mesma lógica do Flask — aqui simplificamos com variável de ambiente)
-const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || 'cajuru@2026';
+const getAdminPassword = () => {
+  if (typeof window !== 'undefined' && window.__ENV__ && window.__ENV__.VITE_ADMIN_PASSWORD) {
+    return window.__ENV__.VITE_ADMIN_PASSWORD;
+  }
+  return import.meta.env.VITE_ADMIN_PASSWORD || 'cajuru@2026';
+};
 
 export function AdminProvider({ children }) {
   const [isAdmin, setIsAdmin] = useState(() => {
@@ -11,7 +15,8 @@ export function AdminProvider({ children }) {
   });
 
   const login = (password) => {
-    if (password === ADMIN_PASSWORD) {
+    const expectedPassword = getAdminPassword();
+    if (password === expectedPassword) {
       sessionStorage.setItem('admin_session', 'true');
       setIsAdmin(true);
       return true;

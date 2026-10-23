@@ -1,7 +1,18 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
+// Resolução de variáveis:
+// 1. window.__ENV__ (injetado em tempo de execução pelo server.js no Easypanel)
+// 2. import.meta.env (embutido em tempo de build pelo Vite)
+// 3. Fallback das credenciais do projeto
+const getEnv = (key, fallback = '') => {
+  if (typeof window !== 'undefined' && window.__ENV__ && window.__ENV__[key]) {
+    return window.__ENV__[key];
+  }
+  return import.meta.env[key] || fallback;
+};
+
+const supabaseUrl = getEnv('VITE_SUPABASE_URL', 'https://hnqzpwxdarllezyhijqh.supabase.co');
+const supabaseAnonKey = getEnv('VITE_SUPABASE_PUBLISHABLE_KEY', 'sb_publishable_5e8E8brZs6dS08og8slVPQ_durURMQH');
 
 const isPlaceholder = (val) =>
   !val ||

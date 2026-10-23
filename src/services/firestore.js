@@ -56,17 +56,21 @@ export async function createInscricao(data) {
         .select()
         .single();
       if (!error) {
-        console.log('✅ Inscrição salva no Supabase.');
+        console.log('✅ Inscrição salva no Supabase:', inserted);
         return inserted;
       }
-      console.warn('⚠️ Supabase createInscricao error:', error.message);
+      console.error('❌ Supabase createInscricao error:', error.message);
+      throw new Error(`Erro no banco de dados (Supabase): ${error.message}`);
     } catch (e) {
-      console.warn('⚠️ Supabase createInscricao exception:', e.message);
+      console.error('❌ Supabase createInscricao exception:', e.message);
+      if (e.message?.includes('Supabase')) {
+        throw e;
+      }
     }
   }
 
-  // 2. Fallback localStorage
-  console.warn('⚠️ Supabase indisponível. Salvando no localStorage.');
+  // 2. Fallback localStorage (apenas quando Supabase não estiver configurado)
+  console.warn('⚠️ Supabase não configurado. Salvando no localStorage.');
   const list = getLocalInscricoes();
   const newItem = {
     ...data,
