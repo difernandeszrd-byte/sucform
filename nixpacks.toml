@@ -2,5 +2,11 @@
 NIXPACKS_NODE_VERSION = "20"
 PORT = "3000"
 
+[phases.install]
+cmds = ["NODE_ENV=development npm ci"]
+
+[phases.build]
+cmds = ["npm run build"]
+
 [start]
 cmd = "node server.js"
