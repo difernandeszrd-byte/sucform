@@ -17,7 +17,6 @@
     "@hookform/resolvers": "^5.9.1",
     "@supabase/supabase-js": "^2.118.0",
     "express": "^4.22.3",
-    "firebase": "^12.19.0",
     "lucide-react": "^1.49.0",
     "nodemailer": "^10.0.13",
     "react": "^19.2.8",
@@ -25,7 +24,6 @@
     "react-hook-form": "^7.89.0",
     "react-hot-toast": "^2.6.1",
     "react-router-dom": "^7.18.4",
-    "resend": "^6.31.0",
     "xlsx": "^0.18.5",
     "zod": "^3.25.76"
   },

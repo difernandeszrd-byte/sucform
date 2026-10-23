@@ -1,5 +1,4 @@
 import nodemailer from 'nodemailer';
-import { Resend } from 'resend';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -83,110 +82,84 @@ export default async function handler(req, res) {
     </html>
   `;
 
-  // 1. Tentar envio via Gmail API REST sobre HTTPS se credenciais estiverem configuradas
+  // Envio via Gmail API REST sobre OAuth2
   const gmailUser = process.env.GMAIL_USER;
   const clientId = process.env.GMAIL_CLIENT_ID;
   const clientSecret = process.env.GMAIL_CLIENT_SECRET;
   const refreshToken = process.env.GMAIL_REFRESH_TOKEN;
 
-  if (gmailUser && clientId && clientSecret && refreshToken) {
-    try {
-      console.log('🔄 Obtendo Access Token do Google OAuth2...');
-      const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          client_id: clientId,
-          client_secret: clientSecret,
-          refresh_token: refreshToken,
-          grant_type: 'refresh_token',
-        }),
-      });
-
-      const tokenData = await tokenResponse.json();
-
-      if (!tokenResponse.ok || !tokenData.access_token) {
-        console.error('❌ Erro no Google OAuth2 Token Refresh:', tokenData);
-        if (tokenData.error === 'invalid_grant') {
-          return res.status(401).json({
-            error: 'Google OAuth2 invalid_grant: O Refresh Token expirou ou não pertence a este Client ID/Secret. Gere um novo Refresh Token no OAuth Playground marcando "Use your own OAuth credentials".',
-            details: tokenData,
-          });
-        }
-        throw new Error(`Falha na autenticação OAuth2 do Google: ${tokenData.error_description || tokenData.error}`);
-      }
-
-      const accessToken = tokenData.access_token;
-      // Nome codificado em RFC 2047 (Base64 UTF-8) para suporte a acentos no header From
-      const senderNameRaw = 'Semana Universitaria Cajuruense';
-      const senderNameEncoded = `=?utf-8?B?${Buffer.from('Semana Universitária Cajuruense').toString('base64')}?=`;
-
-      const rawMessage = [
-        `From: ${senderNameEncoded} <${gmailUser}>`,
-        `To: ${email}`,
-        `Subject: =?utf-8?B?${Buffer.from(subject).toString('base64')}?=`,
-        'MIME-Version: 1.0',
-        'Content-Type: text/html; charset=utf-8',
-        '',
-        htmlContent,
-      ].join('\r\n');
-
-      const encodedMessage = Buffer.from(rawMessage)
-        .toString('base64')
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=+$/, '');
-
-      const sendResponse = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ raw: encodedMessage }),
-      });
-
-      const sendData = await sendResponse.json();
-
-      if (sendResponse.ok) {
-        console.log('✅ E-mail enviado com sucesso via Gmail REST API:', sendData.id);
-        return res.status(200).json({ success: true, provider: 'gmail_oauth2_rest', messageId: sendData.id });
-      } else {
-        console.error('❌ Erro retornado pela API do Gmail ao enviar:', sendData);
-        throw new Error(`Gmail API Error: ${sendData.error?.message || JSON.stringify(sendData)}`);
-      }
-    } catch (gmailError) {
-      console.error('❌ Erro ao enviar e-mail via Gmail OAuth2:', gmailError.message);
-      if (!process.env.RESEND_API_KEY) {
-        return res.status(500).json({ error: `Erro no envio via Gmail: ${gmailError.message}` });
-      }
-    }
+  if (!gmailUser || !clientId || !clientSecret || !refreshToken) {
+    console.error('❌ Variáveis de ambiente Gmail OAuth2 não configuradas.');
+    return res.status(500).json({
+      error: 'Provedor de e-mail não configurado. Configure GMAIL_USER, GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET e GMAIL_REFRESH_TOKEN.',
+    });
   }
 
+  try {
+    console.log('🔄 Obtendo Access Token do Google OAuth2...');
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        refresh_token: refreshToken,
+        grant_type: 'refresh_token',
+      }),
+    });
 
-  // 2. Fallback para Resend API se RESEND_API_KEY estiver configurado
-  if (process.env.RESEND_API_KEY) {
-    try {
-      const resend = new Resend(process.env.RESEND_API_KEY);
-      const fromEmail = process.env.RESEND_FROM_EMAIL || 'Semana Universitária <onboarding@resend.dev>';
-      const data = await resend.emails.send({
-        from: fromEmail,
-        to: [email],
-        subject: subject,
-        html: htmlContent,
-      });
+    const tokenData = await tokenResponse.json();
 
-      console.log('✅ E-mail enviado com sucesso via Resend API');
-      return res.status(200).json({ success: true, provider: 'resend', data });
-    } catch (resendError) {
-      console.error('❌ Erro ao enviar e-mail via Resend:', resendError);
-      return res.status(500).json({ error: resendError.message || 'Erro ao enviar e-mail via Resend' });
+    if (!tokenResponse.ok || !tokenData.access_token) {
+      console.error('❌ Erro no Google OAuth2 Token Refresh:', tokenData);
+      if (tokenData.error === 'invalid_grant') {
+        return res.status(401).json({
+          error: 'Google OAuth2 invalid_grant: O Refresh Token expirou ou não pertence a este Client ID/Secret. Gere um novo Refresh Token.',
+          details: tokenData,
+        });
+      }
+      throw new Error(`Falha na autenticação OAuth2 do Google: ${tokenData.error_description || tokenData.error}`);
     }
-  }
 
-  return res.status(500).json({
-    error: 'Nenhum provedor de e-mail configurado. Por favor, configure as variáveis de ambiente do Gmail OAuth2 (GMAIL_USER, GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, GMAIL_REFRESH_TOKEN) ou RESEND_API_KEY.',
-  });
+    const accessToken = tokenData.access_token;
+    const senderNameEncoded = `=?utf-8?B?${Buffer.from('Semana Universitária Cajuruense').toString('base64')}?=`;
+
+    const rawMessage = [
+      `From: ${senderNameEncoded} <${gmailUser}>`,
+      `To: ${email}`,
+      `Subject: =?utf-8?B?${Buffer.from(subject).toString('base64')}?=`,
+      'MIME-Version: 1.0',
+      'Content-Type: text/html; charset=utf-8',
+      '',
+      htmlContent,
+    ].join('\r\n');
+
+    const encodedMessage = Buffer.from(rawMessage)
+      .toString('base64')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
+
+    const sendResponse = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ raw: encodedMessage }),
+    });
+
+    const sendData = await sendResponse.json();
+
+    if (sendResponse.ok) {
+      console.log('✅ E-mail enviado com sucesso via Gmail REST API:', sendData.id);
+      return res.status(200).json({ success: true, provider: 'gmail_oauth2_rest', messageId: sendData.id });
+    } else {
+      console.error('❌ Erro retornado pela API do Gmail ao enviar:', sendData);
+      throw new Error(`Gmail API Error: ${sendData.error?.message || JSON.stringify(sendData)}`);
+    }
+  } catch (gmailError) {
+    console.error('❌ Erro ao enviar e-mail via Gmail OAuth2:', gmailError.message);
+    return res.status(500).json({ error: `Erro no envio via Gmail: ${gmailError.message}` });
+  }
 }
-
-

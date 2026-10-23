@@ -59,7 +59,7 @@ export default function AdminInscritos() {
       if (res.success) {
         toast.success(`E-mail de confirmação enviado para ${registro.email}! 📬`, { id: toastId });
       } else {
-        toast.error(`Não foi possível enviar: ${res.message || 'Verifique sua chave VITE_RESEND_API_KEY no .env.local'}`, { id: toastId });
+        toast.error(`Não foi possível enviar: ${res.message || 'Verifique as credenciais Gmail OAuth2 no servidor.'}`, { id: toastId });
       }
     } catch {
       toast.error('Erro inesperado ao enviar e-mail.', { id: toastId });

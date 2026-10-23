@@ -1,6 +1,7 @@
 /**
- * Servico de envio de e-mails de confirmacao para inscritos.
- * Suporta rota de API (/api/send-email) e fallback direto via Resend REST API.
+ * Serviço de envio de e-mails de confirmação para inscritos.
+ * Utiliza exclusivamente a rota de API do servidor (/api/send-email → Gmail OAuth2).
+ * Fallback direto via Gmail OAuth2 REST API no navegador se VITE_GMAIL_* estiverem definidos (modo dev).
  */
 
 export function generateEmailHtml(participantData) {
@@ -198,6 +199,10 @@ export function generateEmailHtml(participantData) {
 </html>`;
 }
 
+/**
+ * Tenta enviar via Gmail OAuth2 REST API diretamente do navegador.
+ * Usado apenas como fallback em modo de desenvolvimento quando VITE_GMAIL_* estão definidos.
+ */
 async function sendViaGmailOAuth2Direct(participantData) {
   const gmailUser = import.meta.env.VITE_GMAIL_USER;
   const clientId = import.meta.env.VITE_GMAIL_CLIENT_ID;
@@ -209,7 +214,6 @@ async function sendViaGmailOAuth2Direct(participantData) {
   }
 
   try {
-    // 1. Obter Access Token atualizado via Refresh Token do Google OAuth2
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -232,7 +236,6 @@ async function sendViaGmailOAuth2Direct(participantData) {
     const subject = '🎉 Cadastro Concluído com Êxito - Semana Universitária Cajuruense';
     const senderName = import.meta.env.VITE_GMAIL_FROM_NAME || 'Semana Universitária';
 
-    // 2. Montar mensagem MIME RFC 2822
     const rawMessage = [
       `From: "${senderName}" <${gmailUser}>`,
       `To: ${participantData.email}`,
@@ -243,13 +246,11 @@ async function sendViaGmailOAuth2Direct(participantData) {
       htmlContent,
     ].join('\r\n');
 
-    // 3. Converter para formato Base64URL aceito pela API do Gmail
     const encodedMessage = btoa(unescape(encodeURIComponent(rawMessage)))
       .replace(/\+/g, '-')
       .replace(/\//g, '_')
       .replace(/=+$/, '');
 
-    // 4. Enviar mensagem via REST API oficial do Gmail
     const gmailResponse = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
       method: 'POST',
       headers: {
@@ -261,14 +262,14 @@ async function sendViaGmailOAuth2Direct(participantData) {
 
     const sendResult = await gmailResponse.json();
     if (gmailResponse.ok) {
-      console.log('✅ E-mail enviado com sucesso via Gmail OAuth2 REST API no navegador!', sendResult);
+      console.log('✅ E-mail enviado via Gmail OAuth2 REST API (navegador)!', sendResult);
       return { success: true, method: 'gmail_oauth2_rest', data: sendResult };
     } else {
       console.warn('⚠️ Erro retornado pela API do Gmail:', sendResult);
       return null;
     }
   } catch (err) {
-    console.error('❌ Exceção ao enviar e-mail via Gmail OAuth2 no navegador:', err);
+    console.error('❌ Exceção ao enviar e-mail via Gmail OAuth2 (navegador):', err);
     return null;
   }
 }
@@ -279,7 +280,7 @@ export async function sendConfirmationEmail(participantData) {
     return { success: false, reason: 'no_email', message: 'E-mail não informado.' };
   }
 
-  // 1. Tenta rota serverless /api/send-email (Processa Gmail OAuth2 ou Resend no backend)
+  // 1. Tenta rota do servidor /api/send-email (Gmail OAuth2 no backend)
   let apiErrorMsg = null;
   try {
     const res = await fetch('/api/send-email', {
@@ -290,13 +291,12 @@ export async function sendConfirmationEmail(participantData) {
 
     if (res.ok) {
       const data = await res.json();
-      console.log(`✅ E-mail de confirmação enviado via rota serverless /api/send-email! Provider: ${data.provider || 'default'}`);
+      console.log(`✅ E-mail enviado via /api/send-email! Provider: ${data.provider || 'gmail'}`);
       return { success: true, method: 'api', data };
     } else {
       const errData = await res.json().catch(() => ({}));
       apiErrorMsg = errData.error || `Erro HTTP ${res.status} ao enviar e-mail`;
       console.warn('⚠️ Erro na resposta da API /api/send-email:', apiErrorMsg);
-      // Se o servidor respondeu mas houve erro de config, retornar imediatamente
       if (res.status === 500 || res.status === 401) {
         return { success: false, reason: 'api_error', message: apiErrorMsg };
       }
@@ -306,55 +306,16 @@ export async function sendConfirmationEmail(participantData) {
     console.warn('⚠️ Exceção ao conectar com /api/send-email:', err);
   }
 
-  // 2. Fallback Dev Direct: Tenta enviar via Gmail OAuth2 REST API no navegador se VITE_GMAIL_* estiverem definidos
+  // 2. Fallback dev: Gmail OAuth2 REST API direto no navegador (VITE_GMAIL_*)
   const gmailDirectResult = await sendViaGmailOAuth2Direct(participantData);
-  if (gmailDirectResult && gmailDirectResult.success) {
+  if (gmailDirectResult?.success) {
     return gmailDirectResult;
   }
 
-  // 3. Fallback Dev Direct: Envio via chamada direta à REST API do Resend no navegador
-  const apiKey = import.meta.env.VITE_RESEND_API_KEY;
-  if (apiKey && apiKey.startsWith('re_') && !apiKey.includes('SUA_CHAVE')) {
-    try {
-      const fromEmail = import.meta.env.VITE_RESEND_FROM_EMAIL || 'Semana Universitária <onboarding@resend.dev>';
-      const htmlContent = generateEmailHtml(participantData);
-
-      const resendResponse = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          from: fromEmail,
-          to: [participantData.email],
-          subject: '🎉 Cadastro Concluído com Êxito - Semana Universitária Cajuruense',
-          html: htmlContent,
-        }),
-      });
-
-      const data = await resendResponse.json();
-
-      if (resendResponse.ok) {
-        console.log('✅ E-mail enviado com sucesso via Resend REST API!', data);
-        return { success: true, method: 'resend_rest', data };
-      } else {
-        console.warn('⚠️ Erro na resposta do Resend:', data);
-        return { success: false, reason: 'resend_error', message: data.message || 'Erro ao enviar e-mail via Resend' };
-      }
-    } catch (err) {
-      console.warn('⚠️ Falha de rede/requisição ao enviar via Resend:', err);
-      return { success: false, reason: 'network_error', message: err.message };
-    }
-  }
-
-  console.info('ℹ️ Nenhuma credencial válida de e-mail (Gmail OAuth2 ou Resend) foi encontrada.');
+  console.info('ℹ️ Nenhuma credencial válida de e-mail (Gmail OAuth2) encontrada.');
   return {
     success: false,
     reason: 'not_configured',
-    message: apiErrorMsg || 'Credenciais de e-mail não configuradas no servidor.',
+    message: apiErrorMsg || 'Credenciais Gmail OAuth2 não configuradas no servidor.',
   };
 }
-
-
-

@@ -22,10 +22,12 @@ let supabase = null;
 if (hasSupabaseConfig) {
   try {
     supabase = createClient(supabaseUrl, supabaseAnonKey);
-    console.log('✅ Supabase inicializado com sucesso como fallback do Firebase.');
+    console.log('✅ Supabase inicializado com sucesso.');
   } catch (e) {
     console.warn('⚠️ Falha ao inicializar o Supabase:', e);
   }
+} else {
+  console.warn('⚠️ Supabase não configurado. Verifique VITE_SUPABASE_URL e VITE_SUPABASE_PUBLISHABLE_KEY.');
 }
 
 export { supabase };

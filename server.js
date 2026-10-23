@@ -26,10 +26,9 @@ app.use(express.json());
 // ── Health-check (útil para diagnóstico no EasyPanel) ──
 app.get('/api/health', (_req, res) => {
   const hasGmail = !!(process.env.GMAIL_USER && process.env.GMAIL_CLIENT_ID && process.env.GMAIL_REFRESH_TOKEN);
-  const hasResend = !!(process.env.RESEND_API_KEY && !process.env.RESEND_API_KEY.includes('SUA_CHAVE'));
   res.json({
     status: 'ok',
-    providers: { gmail: hasGmail, resend: hasResend },
+    providers: { gmail: hasGmail },
     env: process.env.NODE_ENV || 'development',
   });
 });

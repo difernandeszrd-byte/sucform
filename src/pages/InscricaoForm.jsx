@@ -10,7 +10,10 @@ import {
   getInscricoesAtivas,
 } from '../services/firestore';
 import { sendConfirmationEmail } from '../services/emailService';
-import { logAnalyticsEvent } from '../firebase';
+// Analytics removido (Firebase desativado)
+function logAnalyticsEvent(event, params) {
+  console.debug('[analytics]', event, params);
+}
 import {
   cleanCPF,
   formatCPF,

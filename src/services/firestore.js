@@ -1,41 +1,11 @@
-import {
-  collection,
-  addDoc,
-  getDocs,
-  deleteDoc,
-  doc,
-  query,
-  orderBy,
-  where,
-  getDoc,
-  setDoc,
-  serverTimestamp,
-} from 'firebase/firestore';
-import { db } from '../firebase';
-import { supabase, hasSupabaseConfig } from '../supabase';
+import { supabase } from '../supabase';
 
-const INSCRICOES_COL = 'inscricoes';
 const SUPABASE_TABLE = 'inscricoes';
 const LOCAL_STORAGE_KEY = 'suc_inscricoes_data';
 const LOCAL_STORAGE_CONFIG_KEY = 'suc_config_ativas';
 
-// Helper for promise timeout
-function withTimeout(promise, ms = 3500) {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('Firestore timeout')), ms);
-    promise
-      .then((res) => {
-        clearTimeout(timer);
-        resolve(res);
-      })
-      .catch((err) => {
-        clearTimeout(timer);
-        reject(err);
-      });
-  });
-}
+// ── LocalStorage helpers ─────────────────────────────────────────────────────
 
-// Helper for local storage
 function getLocalInscricoes() {
   try {
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -49,25 +19,14 @@ function saveLocalInscricoes(list) {
   try {
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(list));
   } catch (e) {
-    console.error('Error saving to localStorage:', e);
+    console.error('Erro ao salvar no localStorage:', e);
   }
 }
 
-// ── Inscrições ──────────────────────────────────────────────────────────────
+// ── Inscrições ───────────────────────────────────────────────────────────────
 
 export async function checkCPFExists(cpf) {
-  // 1. Tenta Firebase
-  if (db) {
-    try {
-      const q = query(collection(db, INSCRICOES_COL), where('cpf', '==', cpf));
-      const snap = await withTimeout(getDocs(q));
-      return !snap.empty;
-    } catch (e) {
-      console.warn('🔄 Firebase indisponível (checkCPF), tentando Supabase...', e.message);
-    }
-  }
-
-  // 2. Tenta Supabase
+  // 1. Tenta Supabase
   if (supabase) {
     try {
       const { data, error } = await supabase
@@ -82,29 +41,13 @@ export async function checkCPFExists(cpf) {
     }
   }
 
-  // 3. Fallback localStorage
+  // 2. Fallback localStorage
   const list = getLocalInscricoes();
   return list.some(item => item.cpf === cpf);
 }
 
 export async function createInscricao(data) {
-  // 1. Tenta Firebase
-  if (db) {
-    try {
-      const docRef = await withTimeout(
-        addDoc(collection(db, INSCRICOES_COL), {
-          ...data,
-          created_at: serverTimestamp(),
-        })
-      );
-      console.log('✅ Inscrição salva no Firebase.');
-      return docRef;
-    } catch (e) {
-      console.warn('🔄 Firebase indisponível (createInscricao), tentando Supabase...', e.message);
-    }
-  }
-
-  // 2. Tenta Supabase
+  // 1. Tenta Supabase
   if (supabase) {
     try {
       const { data: inserted, error } = await supabase
@@ -113,7 +56,7 @@ export async function createInscricao(data) {
         .select()
         .single();
       if (!error) {
-        console.log('✅ Inscrição salva no Supabase (fallback do Firebase).');
+        console.log('✅ Inscrição salva no Supabase.');
         return inserted;
       }
       console.warn('⚠️ Supabase createInscricao error:', error.message);
@@ -122,13 +65,13 @@ export async function createInscricao(data) {
     }
   }
 
-  // 3. Fallback localStorage
-  console.warn('⚠️ Firebase e Supabase indisponíveis. Salvando no localStorage.');
+  // 2. Fallback localStorage
+  console.warn('⚠️ Supabase indisponível. Salvando no localStorage.');
   const list = getLocalInscricoes();
   const newItem = {
     ...data,
     id: 'loc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
-    created_at: { seconds: Math.floor(Date.now() / 1000) },
+    created_at: new Date().toISOString(),
   };
   list.unshift(newItem);
   saveLocalInscricoes(list);
@@ -136,18 +79,7 @@ export async function createInscricao(data) {
 }
 
 export async function getInscricoes() {
-  // 1. Tenta Firebase
-  if (db) {
-    try {
-      const q = query(collection(db, INSCRICOES_COL), orderBy('created_at', 'desc'));
-      const snap = await withTimeout(getDocs(q));
-      return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    } catch (e) {
-      console.warn('🔄 Firebase indisponível (getInscricoes), tentando Supabase...', e.message);
-    }
-  }
-
-  // 2. Tenta Supabase
+  // 1. Tenta Supabase
   if (supabase) {
     try {
       const { data, error } = await supabase
@@ -155,7 +87,7 @@ export async function getInscricoes() {
         .select('*')
         .order('created_at', { ascending: false });
       if (!error) {
-        console.log('✅ Inscrições carregadas do Supabase (fallback do Firebase).');
+        console.log('✅ Inscrições carregadas do Supabase.');
         return data;
       }
       console.warn('⚠️ Supabase getInscricoes error:', error.message);
@@ -164,23 +96,12 @@ export async function getInscricoes() {
     }
   }
 
-  // 3. Fallback localStorage
+  // 2. Fallback localStorage
   return getLocalInscricoes();
 }
 
 export async function deleteInscricao(id) {
-  // 1. Tenta Firebase
-  if (db) {
-    try {
-      await withTimeout(deleteDoc(doc(db, INSCRICOES_COL, id)));
-      console.log('✅ Inscrição deletada do Firebase.');
-      return;
-    } catch (e) {
-      console.warn('🔄 Firebase indisponível (deleteInscricao), tentando Supabase...', e.message);
-    }
-  }
-
-  // 2. Tenta Supabase
+  // 1. Tenta Supabase
   if (supabase) {
     try {
       const { error } = await supabase
@@ -188,7 +109,7 @@ export async function deleteInscricao(id) {
         .delete()
         .eq('id', id);
       if (!error) {
-        console.log('✅ Inscrição deletada do Supabase (fallback do Firebase).');
+        console.log('✅ Inscrição deletada do Supabase.');
         return;
       }
       console.warn('⚠️ Supabase deleteInscricao error:', error.message);
@@ -197,29 +118,16 @@ export async function deleteInscricao(id) {
     }
   }
 
-  // 3. Fallback localStorage
+  // 2. Fallback localStorage
   let list = getLocalInscricoes();
   list = list.filter(item => item.id !== id);
   saveLocalInscricoes(list);
 }
 
-// ── Configuração (inscrições abertas/fechadas) ──────────────────────────────
+// ── Configuração (inscrições abertas/fechadas) ───────────────────────────────
 
 export async function getInscricoesAtivas() {
-  // 1. Tenta Firebase
-  if (db) {
-    try {
-      const ref = doc(db, 'config', 'inscricoes');
-      const snap = await withTimeout(getDoc(ref));
-      if (snap.exists()) {
-        return snap.data().ativas !== false;
-      }
-    } catch (e) {
-      console.warn('🔄 Firebase indisponível (getInscricoesAtivas), tentando Supabase...', e.message);
-    }
-  }
-
-  // 2. Tenta Supabase
+  // 1. Tenta Supabase
   if (supabase) {
     try {
       const { data, error } = await supabase
@@ -228,7 +136,7 @@ export async function getInscricoesAtivas() {
         .eq('id', 'inscricoes')
         .single();
       if (!error && data) return data.ativas !== false;
-      // Se o registro não existir (PGRST116), retorna true por padrão
+      // PGRST116 = row not found → retorna true por padrão
       if (error && error.code !== 'PGRST116') {
         console.warn('⚠️ Supabase getInscricoesAtivas error:', error.message);
       }
@@ -237,31 +145,20 @@ export async function getInscricoesAtivas() {
     }
   }
 
-  // 3. Fallback localStorage
+  // 2. Fallback localStorage
   const saved = localStorage.getItem(LOCAL_STORAGE_CONFIG_KEY);
   return saved !== null ? saved === 'true' : true;
 }
 
 export async function setInscricoesAtivas(ativas) {
-  // 1. Tenta Firebase
-  if (db) {
-    try {
-      const ref = doc(db, 'config', 'inscricoes');
-      await withTimeout(setDoc(ref, { ativas }, { merge: true }));
-      console.log('✅ Config salva no Firebase.');
-    } catch (e) {
-      console.warn('🔄 Firebase indisponível (setInscricoesAtivas), tentando Supabase...', e.message);
-    }
-  }
-
-  // 2. Tenta Supabase (upsert)
+  // 1. Tenta Supabase (upsert)
   if (supabase) {
     try {
       const { error } = await supabase
         .from('config')
         .upsert({ id: 'inscricoes', ativas }, { onConflict: 'id' });
       if (!error) {
-        console.log('✅ Config salva no Supabase (fallback do Firebase).');
+        console.log('✅ Config salva no Supabase.');
       } else {
         console.warn('⚠️ Supabase setInscricoesAtivas error:', error.message);
       }
@@ -270,6 +167,6 @@ export async function setInscricoesAtivas(ativas) {
     }
   }
 
-  // 3. Sempre salva no localStorage como cache local
+  // 2. Sempre salva no localStorage como cache local
   localStorage.setItem(LOCAL_STORAGE_CONFIG_KEY, String(ativas));
 }
