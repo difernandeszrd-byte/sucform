@@ -58,5 +58,4 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Servidor rodando na porta ${PORT}`);
   console.log(`🔧 NODE_ENV: ${process.env.NODE_ENV || 'development'}`);
   console.log(`📧 Gmail configurado: ${!!(process.env.GMAIL_USER && process.env.GMAIL_REFRESH_TOKEN)}`);
-  console.log(`📧 Resend configurado: ${!!(process.env.RESEND_API_KEY && !process.env.RESEND_API_KEY.includes('SUA_CHAVE'))}`);
 });
