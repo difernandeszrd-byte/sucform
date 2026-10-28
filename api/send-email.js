@@ -1,3 +1,5 @@
+import nodemailer from 'nodemailer';
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -10,6 +12,19 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'E-mail e nome são obrigatórios.' });
   }
 
+  // ── Credenciais SMTP (Gmail + Senha de App) ─────────────────────────────────
+  const gmailUser = process.env.GMAIL_USER;
+  const gmailAppPassword = process.env.GMAIL_APP_PASSWORD;
+  const fromName = process.env.GMAIL_FROM_NAME || 'Semana Universitária Cajuruense';
+
+  if (!gmailUser || !gmailAppPassword) {
+    console.error('❌ Variáveis de ambiente Gmail não configuradas (GMAIL_USER / GMAIL_APP_PASSWORD).');
+    return res.status(500).json({
+      error: 'Provedor de e-mail não configurado. Configure GMAIL_USER e GMAIL_APP_PASSWORD no servidor.',
+    });
+  }
+
+  // ── Conteúdo do e-mail ───────────────────────────────────────────────────────
   const local = [cidade_estado, bairro].filter(Boolean).join(' - ') || '-';
   const chefe = chefe_de_equipe ? 'Sim' : 'Não';
   const subject = '🎉 Cadastro Concluído com Êxito - Semana Universitária Cajuruense';
@@ -80,84 +95,36 @@ export default async function handler(req, res) {
     </html>
   `;
 
-  // Envio via Gmail API REST sobre OAuth2
-  const gmailUser = process.env.GMAIL_USER;
-  const clientId = process.env.GMAIL_CLIENT_ID;
-  const clientSecret = process.env.GMAIL_CLIENT_SECRET;
-  const refreshToken = process.env.GMAIL_REFRESH_TOKEN;
-
-  if (!gmailUser || !clientId || !clientSecret || !refreshToken) {
-    console.error('❌ Variáveis de ambiente Gmail OAuth2 não configuradas.');
-    return res.status(500).json({
-      error: 'Provedor de e-mail não configurado. Configure GMAIL_USER, GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET e GMAIL_REFRESH_TOKEN.',
-    });
-  }
-
+  // ── Transporter Nodemailer com Gmail SMTP ────────────────────────────────────
   try {
-    console.log('🔄 Obtendo Access Token do Google OAuth2...');
-    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_id: clientId,
-        client_secret: clientSecret,
-        refresh_token: refreshToken,
-        grant_type: 'refresh_token',
-      }),
-    });
-
-    const tokenData = await tokenResponse.json();
-
-    if (!tokenResponse.ok || !tokenData.access_token) {
-      console.error('❌ Erro no Google OAuth2 Token Refresh:', tokenData);
-      if (tokenData.error === 'invalid_grant') {
-        return res.status(401).json({
-          error: 'Google OAuth2 invalid_grant: O Refresh Token expirou ou não pertence a este Client ID/Secret. Gere um novo Refresh Token.',
-          details: tokenData,
-        });
-      }
-      throw new Error(`Falha na autenticação OAuth2 do Google: ${tokenData.error_description || tokenData.error}`);
-    }
-
-    const accessToken = tokenData.access_token;
-    const senderNameEncoded = `=?utf-8?B?${Buffer.from('Semana Universitária Cajuruense').toString('base64')}?=`;
-
-    const rawMessage = [
-      `From: ${senderNameEncoded} <${gmailUser}>`,
-      `To: ${email}`,
-      `Subject: =?utf-8?B?${Buffer.from(subject).toString('base64')}?=`,
-      'MIME-Version: 1.0',
-      'Content-Type: text/html; charset=utf-8',
-      '',
-      htmlContent,
-    ].join('\r\n');
-
-    const encodedMessage = Buffer.from(rawMessage)
-      .toString('base64')
-      .replace(/\+/g, '-')
-      .replace(/\//g, '_')
-      .replace(/=+$/, '');
-
-    const sendResponse = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
+    const transporter = nodemailer.createTransport({
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true, // SSL
+      auth: {
+        user: gmailUser,
+        pass: gmailAppPassword,
       },
-      body: JSON.stringify({ raw: encodedMessage }),
     });
 
-    const sendData = await sendResponse.json();
+    const mailOptions = {
+      from: `"${fromName}" <${gmailUser}>`,
+      to: email,
+      subject,
+      html: htmlContent,
+    };
 
-    if (sendResponse.ok) {
-      console.log('✅ E-mail enviado com sucesso via Gmail REST API:', sendData.id);
-      return res.status(200).json({ success: true, provider: 'gmail_oauth2_rest', messageId: sendData.id });
-    } else {
-      console.error('❌ Erro retornado pela API do Gmail ao enviar:', sendData);
-      throw new Error(`Gmail API Error: ${sendData.error?.message || JSON.stringify(sendData)}`);
-    }
-  } catch (gmailError) {
-    console.error('❌ Erro ao enviar e-mail via Gmail OAuth2:', gmailError.message);
-    return res.status(500).json({ error: `Erro no envio via Gmail: ${gmailError.message}` });
+    console.log(`📧 Enviando e-mail para: ${email} via Gmail SMTP (Senha de App)...`);
+    const info = await transporter.sendMail(mailOptions);
+
+    console.log(`✅ E-mail enviado com sucesso! Message ID: ${info.messageId}`);
+    return res.status(200).json({
+      success: true,
+      provider: 'gmail_smtp_app_password',
+      messageId: info.messageId,
+    });
+  } catch (err) {
+    console.error('❌ Erro ao enviar e-mail via Gmail SMTP:', err.message);
+    return res.status(500).json({ error: `Erro no envio via Gmail SMTP: ${err.message}` });
   }
 }
