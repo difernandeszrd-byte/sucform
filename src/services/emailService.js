@@ -280,42 +280,31 @@ export async function sendConfirmationEmail(participantData) {
     return { success: false, reason: 'no_email', message: 'E-mail não informado.' };
   }
 
-  // 1. Tenta rota do servidor /api/send-email (Gmail OAuth2 no backend)
-  let apiErrorMsg = null;
+  // Monta a URL absoluta para garantir que funcione em Vercel, EasyPanel e dev local
+  const apiUrl = `${window.location.origin}/api/send-email`;
+
   try {
-    const res = await fetch('/api/send-email', {
+    console.log(`📧 Chamando ${apiUrl} para: ${participantData.email}`);
+    const res = await fetch(apiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(participantData),
     });
 
-    if (res.ok) {
-      const data = await res.json();
-      console.log(`✅ E-mail enviado via /api/send-email! Provider: ${data.provider || 'gmail'}`);
+    const data = await res.json().catch(() => ({}));
+
+    if (res.ok && data.success) {
+      console.log(`✅ E-mail enviado! Provider: ${data.provider || 'gmail'} | ID: ${data.messageId || '-'}`);
       return { success: true, method: 'api', data };
-    } else {
-      const errData = await res.json().catch(() => ({}));
-      apiErrorMsg = errData.error || `Erro HTTP ${res.status} ao enviar e-mail`;
-      console.warn('⚠️ Erro na resposta da API /api/send-email:', apiErrorMsg);
-      if (res.status === 500 || res.status === 401) {
-        return { success: false, reason: 'api_error', message: apiErrorMsg };
-      }
     }
+
+    const errorMsg = data.error || `Erro HTTP ${res.status}`;
+    console.warn('⚠️ Falha no envio de e-mail:', errorMsg);
+    return { success: false, reason: 'api_error', message: errorMsg };
+
   } catch (err) {
-    apiErrorMsg = err.message || 'Falha de conexão com o servidor';
-    console.warn('⚠️ Exceção ao conectar com /api/send-email:', err);
+    const errorMsg = err.message || 'Falha de conexão com o servidor';
+    console.error('❌ Exceção ao chamar /api/send-email:', err);
+    return { success: false, reason: 'network_error', message: errorMsg };
   }
-
-  // 2. Fallback dev: Gmail OAuth2 REST API direto no navegador (VITE_GMAIL_*)
-  const gmailDirectResult = await sendViaGmailOAuth2Direct(participantData);
-  if (gmailDirectResult?.success) {
-    return gmailDirectResult;
-  }
-
-  console.info('ℹ️ Nenhuma credencial válida de e-mail (Gmail OAuth2) encontrada.');
-  return {
-    success: false,
-    reason: 'not_configured',
-    message: apiErrorMsg || 'Credenciais Gmail OAuth2 não configuradas no servidor.',
-  };
 }
