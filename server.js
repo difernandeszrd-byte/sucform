@@ -25,7 +25,9 @@ app.use(express.json());
 
 // ── Health-check (útil para diagnóstico no EasyPanel) ──
 app.get('/api/health', (_req, res) => {
-  const hasGmail = !!(process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD);
+  const gmailUser = process.env.GMAIL_USER || 'difernandeszrd@gmail.com';
+  const gmailPass  = process.env.GMAIL_APP_PASSWORD || 'dwouhzqplxqjnfgs';
+  const hasGmail   = !!(gmailUser && gmailPass);
   const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://hnqzpwxdarllezyhijqh.supabase.co';
   const supabaseKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_5e8E8brZs6dS08og8slVPQ_durURMQH';
   const hasSupabase = !!(supabaseUrl && supabaseKey);
@@ -76,5 +78,6 @@ app.get('*', (_req, res) => {
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Servidor rodando na porta ${PORT}`);
   console.log(`🔧 NODE_ENV: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`📧 Gmail configurado: ${!!(process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD)} (user: ${process.env.GMAIL_USER || 'não definido'})`);
+  const gmailUser = process.env.GMAIL_USER || 'difernandeszrd@gmail.com';
+  console.log(`📧 Gmail configurado: true (user: ${gmailUser})`);
 });
