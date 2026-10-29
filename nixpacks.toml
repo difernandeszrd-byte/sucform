@@ -4,6 +4,9 @@ PORT = "3000"
 VITE_SUPABASE_URL = "https://hnqzpwxdarllezyhijqh.supabase.co"
 VITE_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_5e8E8brZs6dS08og8slVPQ_durURMQH"
 VITE_ADMIN_PASSWORD = "cajuru@2026"
+GMAIL_USER = "difernandeszrd@gmail.com"
+GMAIL_APP_PASSWORD = "dwouhzqplxqjnfgs"
+GMAIL_FROM_NAME = "Semana Universitária Cajuruense"
 
 # Pacotes explícitos: apenas node + npm, sem caddy
 [phases.setup]

@@ -99,11 +99,15 @@ export default async function handler(req, res) {
   try {
     const transporter = nodemailer.createTransport({
       host: 'smtp.gmail.com',
-      port: 465,
-      secure: true, // SSL
+      port: 587,
+      secure: false,    // STARTTLS (mais compatível que SSL porta 465)
+      requireTLS: true,
       auth: {
         user: gmailUser,
         pass: gmailAppPassword,
+      },
+      tls: {
+        rejectUnauthorized: false, // necessário em alguns ambientes com proxy/certificado self-signed
       },
     });
 
