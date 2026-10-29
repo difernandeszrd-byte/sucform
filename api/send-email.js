@@ -13,9 +13,9 @@ export default async function handler(req, res) {
   }
 
   // ── Credenciais SMTP (Gmail + Senha de App) ─────────────────────────────────
-  const gmailUser = process.env.GMAIL_USER;
-  const gmailAppPassword = process.env.GMAIL_APP_PASSWORD;
-  const fromName = process.env.GMAIL_FROM_NAME || 'Semana Universitária Cajuruense';
+  const gmailUser     = process.env.GMAIL_USER         || 'difernandeszrd@gmail.com';
+  const gmailAppPassword = process.env.GMAIL_APP_PASSWORD || 'dwouhzqplxqjnfgs';
+  const fromName      = process.env.GMAIL_FROM_NAME    || 'Semana Universitária Cajuruense';
 
   if (!gmailUser || !gmailAppPassword) {
     console.error('❌ Variáveis de ambiente Gmail não configuradas (GMAIL_USER / GMAIL_APP_PASSWORD).');
