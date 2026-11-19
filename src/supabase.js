@@ -6,12 +6,12 @@ import { createClient } from '@supabase/supabase-js';
 // 3. Fallback das credenciais oficiais do projeto Supabase
 const supabaseUrl =
   (typeof window !== 'undefined' && window.__ENV__?.VITE_SUPABASE_URL) ||
-  import.meta.env.VITE_SUPABASE_URL ||
+  import.meta.env?.VITE_SUPABASE_URL ||
   'https://hnqzpwxdarllezyhijqh.supabase.co';
 
 const supabaseAnonKey =
   (typeof window !== 'undefined' && window.__ENV__?.VITE_SUPABASE_PUBLISHABLE_KEY) ||
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+  import.meta.env?.VITE_SUPABASE_PUBLISHABLE_KEY ||
   'sb_publishable_5e8E8brZs6dS08og8slVPQ_durURMQH';
 
 const isPlaceholder = (val) =>

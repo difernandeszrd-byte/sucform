@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAdmin } from '../context/AdminContext';
 import { Lock } from 'lucide-react';
-import logo from '../assets/logo.png';
+import bannerImg from '../assets/banner-suc.jpg';
 
 export default function AdminLogin() {
   const [password, setPassword] = useState('');
@@ -33,7 +33,7 @@ export default function AdminLogin() {
     <div className="page-center">
       <div className="login-card">
         <div className="form-header">
-          <img src={logo} alt="Logo" className="form-logo" />
+          <img src={bannerImg} alt="Semana Universitária Cajuruense" className="form-banner" />
           <h1>Semana Universitária Cajuruense</h1>
           <h2>
             <Lock size={20} style={{ marginRight: '8px', verticalAlign: 'middle' }} />

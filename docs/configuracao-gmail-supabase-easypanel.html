@@ -1,0 +1,1267 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Documentação Técnica — Gmail App + Supabase no EasyPanel</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+    :root {
+      --primary: #4f46e5;
+      --primary-light: #eef2ff;
+      --accent: #7c3aed;
+      --success: #059669;
+      --success-light: #ecfdf5;
+      --warning: #d97706;
+      --warning-light: #fffbeb;
+      --danger: #dc2626;
+      --danger-light: #fef2f2;
+      --info: #0284c7;
+      --info-light: #f0f9ff;
+      --gray-50: #f8fafc;
+      --gray-100: #f1f5f9;
+      --gray-200: #e2e8f0;
+      --gray-300: #cbd5e1;
+      --gray-500: #64748b;
+      --gray-700: #334155;
+      --gray-900: #0f172a;
+      --text: #1e293b;
+      --border: #e2e8f0;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 10.5pt;
+      line-height: 1.65;
+      color: var(--text);
+      background: white;
+      max-width: 210mm;
+      margin: 0 auto;
+      padding: 0;
+    }
+
+    /* ── Capa ── */
+    .cover {
+      height: 100vh;
+      background: linear-gradient(145deg, #0f172a 0%, #1e1b4b 40%, #312e81 100%);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 48px;
+      page-break-after: always;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cover::before {
+      content: '';
+      position: absolute;
+      width: 500px; height: 500px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(99,102,241,0.25) 0%, transparent 70%);
+      top: -100px; right: -100px;
+    }
+
+    .cover::after {
+      content: '';
+      position: absolute;
+      width: 400px; height: 400px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(124,58,237,0.2) 0%, transparent 70%);
+      bottom: -80px; left: -80px;
+    }
+
+    .cover-logo {
+      font-size: 48px;
+      margin-bottom: 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .cover-badge {
+      display: inline-block;
+      background: rgba(99,102,241,0.3);
+      border: 1px solid rgba(99,102,241,0.5);
+      color: #a5b4fc;
+      padding: 6px 18px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .cover h1 {
+      font-size: 32px;
+      font-weight: 800;
+      color: #ffffff;
+      line-height: 1.2;
+      margin-bottom: 16px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .cover h1 span {
+      background: linear-gradient(90deg, #818cf8, #c084fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .cover-subtitle {
+      font-size: 15px;
+      color: #94a3b8;
+      max-width: 480px;
+      margin-bottom: 48px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .cover-meta {
+      display: flex;
+      gap: 32px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .cover-meta-item {
+      text-align: center;
+    }
+
+    .cover-meta-label {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #64748b;
+      margin-bottom: 4px;
+    }
+
+    .cover-meta-value {
+      font-size: 13px;
+      font-weight: 600;
+      color: #cbd5e1;
+    }
+
+    .cover-divider {
+      width: 60px;
+      height: 3px;
+      background: linear-gradient(90deg, #6366f1, #a855f7);
+      border-radius: 2px;
+      margin: 32px auto;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ── Layout geral ── */
+    .page {
+      padding: 40px 48px;
+    }
+
+    /* ── Sumário ── */
+    .toc {
+      padding: 40px 48px;
+      page-break-after: always;
+    }
+
+    .toc-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--gray-900);
+      margin-bottom: 8px;
+    }
+
+    .toc-divider {
+      width: 40px;
+      height: 3px;
+      background: var(--primary);
+      border-radius: 2px;
+      margin-bottom: 28px;
+    }
+
+    .toc-section {
+      margin-bottom: 20px;
+    }
+
+    .toc-section-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--primary);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .toc-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 5px 0;
+      font-size: 10.5pt;
+      color: var(--gray-700);
+      border-bottom: 1px dotted var(--gray-200);
+    }
+
+    .toc-item-num {
+      font-weight: 500;
+      color: var(--text);
+    }
+
+    .toc-page {
+      font-size: 9pt;
+      color: var(--gray-500);
+      background: var(--gray-100);
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    /* ── Cabeçalho de seção ── */
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 2px solid var(--border);
+    }
+
+    .section-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+
+    .icon-blue  { background: #dbeafe; }
+    .icon-purple{ background: #ede9fe; }
+    .icon-green { background: #d1fae5; }
+    .icon-orange{ background: #ffedd5; }
+
+    .section-header-text h2 {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--gray-900);
+      line-height: 1.2;
+    }
+
+    .section-header-text p {
+      font-size: 10pt;
+      color: var(--gray-500);
+      margin-top: 2px;
+    }
+
+    /* ── Títulos ── */
+    h3 {
+      font-size: 13pt;
+      font-weight: 700;
+      color: var(--gray-900);
+      margin: 24px 0 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    h3::before {
+      content: '';
+      display: inline-block;
+      width: 4px;
+      height: 18px;
+      background: var(--primary);
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+
+    h4 {
+      font-size: 11pt;
+      font-weight: 600;
+      color: var(--gray-700);
+      margin: 16px 0 8px;
+    }
+
+    p { margin-bottom: 10px; }
+
+    /* ── Steps ── */
+    .steps {
+      counter-reset: step;
+      margin: 16px 0;
+    }
+
+    .step {
+      display: flex;
+      gap: 14px;
+      margin-bottom: 16px;
+      align-items: flex-start;
+    }
+
+    .step-num {
+      counter-increment: step;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: white;
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .step-num::before { content: counter(step); }
+
+    .step-body { flex: 1; }
+
+    .step-body strong {
+      display: block;
+      font-size: 11pt;
+      font-weight: 600;
+      color: var(--gray-900);
+      margin-bottom: 4px;
+    }
+
+    .step-body p {
+      font-size: 10pt;
+      color: var(--gray-700);
+      margin: 0;
+    }
+
+    /* ── Code ── */
+    code {
+      font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+      font-size: 9.5pt;
+      background: var(--gray-100);
+      color: var(--primary);
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid var(--gray-200);
+    }
+
+    pre {
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      font-size: 9pt;
+      background: var(--gray-900);
+      color: #e2e8f0;
+      padding: 16px 20px;
+      border-radius: 10px;
+      overflow-x: auto;
+      margin: 12px 0;
+      line-height: 1.6;
+      border: 1px solid #1e293b;
+    }
+
+    pre .comment { color: #64748b; }
+    pre .key     { color: #93c5fd; }
+    pre .val     { color: #86efac; }
+    pre .str     { color: #fbbf24; }
+    pre .num     { color: #f9a8d4; }
+
+    /* ── Alertas ── */
+    .alert {
+      display: flex;
+      gap: 12px;
+      padding: 14px 16px;
+      border-radius: 10px;
+      margin: 14px 0;
+      font-size: 10pt;
+    }
+
+    .alert-icon { font-size: 18px; flex-shrink: 0; line-height: 1.4; }
+    .alert-body { flex: 1; }
+    .alert-body strong { display: block; margin-bottom: 3px; font-size: 10.5pt; }
+
+    .alert-success { background: var(--success-light); border-left: 4px solid var(--success); }
+    .alert-success .alert-icon, .alert-success strong { color: var(--success); }
+
+    .alert-warning { background: var(--warning-light); border-left: 4px solid var(--warning); }
+    .alert-warning .alert-icon, .alert-warning strong { color: var(--warning); }
+
+    .alert-danger  { background: var(--danger-light);  border-left: 4px solid var(--danger);  }
+    .alert-danger  .alert-icon, .alert-danger  strong { color: var(--danger);  }
+
+    .alert-info    { background: var(--info-light);    border-left: 4px solid var(--info);    }
+    .alert-info    .alert-icon, .alert-info    strong { color: var(--info);    }
+
+    /* ── Tabelas ── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0;
+      font-size: 10pt;
+    }
+
+    thead tr {
+      background: var(--primary);
+      color: white;
+    }
+
+    thead th {
+      padding: 10px 14px;
+      text-align: left;
+      font-size: 9.5pt;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+    }
+
+    tbody tr:nth-child(even) { background: var(--gray-50); }
+    tbody tr:hover           { background: var(--primary-light); }
+
+    tbody td {
+      padding: 9px 14px;
+      border-bottom: 1px solid var(--border);
+      color: var(--gray-700);
+      vertical-align: top;
+    }
+
+    tbody td:first-child { font-weight: 500; color: var(--gray-900); }
+
+    /* ── Cards de variáveis ── */
+    .env-card {
+      background: var(--gray-50);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 12px 0;
+    }
+
+    .env-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 7px 0;
+      border-bottom: 1px dashed var(--gray-200);
+      gap: 16px;
+    }
+
+    .env-row:last-child { border-bottom: none; }
+
+    .env-key {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9.5pt;
+      font-weight: 600;
+      color: var(--primary);
+      white-space: nowrap;
+    }
+
+    .env-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9pt;
+      color: var(--gray-700);
+      text-align: right;
+      word-break: break-all;
+    }
+
+    .env-desc {
+      font-size: 9pt;
+      color: var(--gray-500);
+      margin-top: 2px;
+    }
+
+    .badge {
+      display: inline-block;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .badge-green  { background: #d1fae5; color: var(--success); }
+    .badge-blue   { background: #dbeafe; color: #1d4ed8; }
+    .badge-orange { background: #ffedd5; color: #c2410c; }
+    .badge-red    { background: #fee2e2; color: var(--danger); }
+
+    /* ── Diagnóstico de log ── */
+    .log-block {
+      background: #0f172a;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 12px 0;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9pt;
+      line-height: 1.8;
+      border: 1px solid #1e293b;
+    }
+
+    .log-ok     { color: #4ade80; }
+    .log-err    { color: #f87171; }
+    .log-info   { color: #93c5fd; }
+    .log-warn   { color: #fbbf24; }
+    .log-neutral{ color: #94a3b8; }
+
+    /* ── Divisor de seção ── */
+    .page-break { page-break-before: always; }
+
+    hr {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 24px 0;
+    }
+
+    ul, ol { padding-left: 20px; margin: 8px 0; }
+    li { margin-bottom: 4px; font-size: 10.5pt; color: var(--gray-700); }
+
+    /* ── Rodapé ── */
+    .footer {
+      margin-top: 40px;
+      padding-top: 16px;
+      border-top: 2px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 9pt;
+      color: var(--gray-500);
+    }
+
+    .footer strong { color: var(--gray-900); }
+
+    /* ── Print ── */
+    @media print {
+      body { max-width: 100%; font-size: 10pt; }
+      .cover { height: 100vh; }
+      .page-break { page-break-before: always; }
+      pre { white-space: pre-wrap; }
+      .alert, .env-card, .log-block { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      thead tr { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════ CAPA -->
+<div class="cover">
+  <div class="cover-logo">🚀</div>
+  <div class="cover-badge">Documentação Técnica</div>
+  <h1>Gmail App Password &amp; Supabase<br><span>no EasyPanel</span></h1>
+  <p class="cover-subtitle">
+    Guia completo de configuração, ajuste, diagnóstico e manutenção dos serviços de e-mail e banco de dados para o formulário <strong style="color:#c7d2fe">Semana Universitária Cajuruense</strong>.
+  </p>
+  <div class="cover-divider"></div>
+  <div class="cover-meta">
+    <div class="cover-meta-item">
+      <div class="cover-meta-label">Projeto</div>
+      <div class="cover-meta-value">sucform / cadform</div>
+    </div>
+    <div class="cover-meta-item">
+      <div class="cover-meta-label">Versão</div>
+      <div class="cover-meta-value">1.0 — Out/2026</div>
+    </div>
+    <div class="cover-meta-item">
+      <div class="cover-meta-label">Plataforma</div>
+      <div class="cover-meta-value">EasyPanel + Nixpacks</div>
+    </div>
+    <div class="cover-meta-item">
+      <div class="cover-meta-label">Stack</div>
+      <div class="cover-meta-value">Node.js 20 + Vite</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════ SUMÁRIO -->
+<div class="toc">
+  <div class="toc-title">Sumário</div>
+  <div class="toc-divider"></div>
+
+  <div class="toc-section">
+    <div class="toc-section-title">Parte 1 — Gmail (Senha de App)</div>
+    <div class="toc-item"><span class="toc-item-num">1.1 — Visão Geral do Serviço</span><span class="toc-page">3</span></div>
+    <div class="toc-item"><span class="toc-item-num">1.2 — Pré-requisitos</span><span class="toc-page">3</span></div>
+    <div class="toc-item"><span class="toc-item-num">1.3 — Gerando a Senha de App no Google</span><span class="toc-page">3</span></div>
+    <div class="toc-item"><span class="toc-item-num">1.4 — Configurando no Código (send-email.js)</span><span class="toc-page">4</span></div>
+    <div class="toc-item"><span class="toc-item-num">1.5 — Variáveis de Ambiente</span><span class="toc-page">4</span></div>
+    <div class="toc-item"><span class="toc-item-num">1.6 — Diferença: Senha de App vs OAuth2</span><span class="toc-page">5</span></div>
+    <div class="toc-item"><span class="toc-item-num">1.7 — Teste de Conexão SMTP</span><span class="toc-page">5</span></div>
+    <div class="toc-item"><span class="toc-item-num">1.8 — Diagnóstico de Erros Comuns</span><span class="toc-page">5</span></div>
+    <div class="toc-item"><span class="toc-item-num">1.9 — Validade e Manutenção</span><span class="toc-page">6</span></div>
+  </div>
+
+  <div class="toc-section">
+    <div class="toc-section-title">Parte 2 — Supabase</div>
+    <div class="toc-item"><span class="toc-item-num">2.1 — Visão Geral do Serviço</span><span class="toc-page">7</span></div>
+    <div class="toc-item"><span class="toc-item-num">2.2 — Criando um Projeto Supabase</span><span class="toc-page">7</span></div>
+    <div class="toc-item"><span class="toc-item-num">2.3 — Obtendo as Chaves de API</span><span class="toc-page">7</span></div>
+    <div class="toc-item"><span class="toc-item-num">2.4 — Configurando no Código (supabase.js)</span><span class="toc-page">8</span></div>
+    <div class="toc-item"><span class="toc-item-num">2.5 — Configuração da Tabela no Banco</span><span class="toc-page">8</span></div>
+    <div class="toc-item"><span class="toc-item-num">2.6 — Políticas de Segurança (RLS)</span><span class="toc-page">9</span></div>
+    <div class="toc-item"><span class="toc-item-num">2.7 — Diagnóstico de Erros Comuns</span><span class="toc-page">9</span></div>
+    <div class="toc-item"><span class="toc-item-num">2.8 — Validade e Limites do Plano Gratuito</span><span class="toc-page">10</span></div>
+  </div>
+
+  <div class="toc-section">
+    <div class="toc-section-title">Parte 3 — EasyPanel (Deploy)</div>
+    <div class="toc-item"><span class="toc-item-num">3.1 — Arquitetura do Deploy</span><span class="toc-page">11</span></div>
+    <div class="toc-item"><span class="toc-item-num">3.2 — Configuração do nixpacks.toml</span><span class="toc-page">11</span></div>
+    <div class="toc-item"><span class="toc-item-num">3.3 — Variáveis de Ambiente: Build vs Runtime</span><span class="toc-page">12</span></div>
+    <div class="toc-item"><span class="toc-item-num">3.4 — Procedimento de Redeploy</span><span class="toc-page">12</span></div>
+    <div class="toc-item"><span class="toc-item-num">3.5 — Verificando Logs no EasyPanel</span><span class="toc-page">13</span></div>
+    <div class="toc-item"><span class="toc-item-num">3.6 — Health-Check da API</span><span class="toc-page">13</span></div>
+    <div class="toc-item"><span class="toc-item-num">3.7 — Tabela Completa de Variáveis</span><span class="toc-page">13</span></div>
+  </div>
+
+  <div class="toc-section">
+    <div class="toc-section-title">Apêndice</div>
+    <div class="toc-item"><span class="toc-item-num">A — Checklist de Configuração Inicial</span><span class="toc-page">14</span></div>
+    <div class="toc-item"><span class="toc-item-num">B — Checklist de Manutenção Periódica</span><span class="toc-page">14</span></div>
+    <div class="toc-item"><span class="toc-item-num">C — Fluxo Completo de Envio de E-mail</span><span class="toc-page">14</span></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════ PARTE 1: GMAIL -->
+<div class="page page-break">
+  <div class="section-header">
+    <div class="section-icon icon-blue">📧</div>
+    <div class="section-header-text">
+      <h2>Parte 1 — Gmail (Senha de App)</h2>
+      <p>Configuração do envio de e-mail via SMTP usando Senha de App do Google</p>
+    </div>
+  </div>
+
+  <h3>1.1 — Visão Geral do Serviço</h3>
+  <p>O sistema utiliza o <strong>SMTP do Gmail</strong> com <strong>Senha de App</strong> para enviar e-mails de confirmação de inscrição. Ao contrário do OAuth2 (que exige renovação periódica de tokens), a Senha de App é uma credencial estável que não expira automaticamente.</p>
+
+  <table>
+    <thead>
+      <tr><th>Parâmetro</th><th>Valor</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Servidor SMTP</td><td><code>smtp.gmail.com</code></td></tr>
+      <tr><td>Porta</td><td><code>587</code> (STARTTLS — mais compatível)</td></tr>
+      <tr><td>Autenticação</td><td>Usuário + Senha de App (16 caracteres)</td></tr>
+      <tr><td>TLS</td><td>Obrigatório (<code>requireTLS: true</code>)</td></tr>
+      <tr><td>Biblioteca</td><td>Nodemailer (Node.js)</td></tr>
+    </tbody>
+  </table>
+
+  <h3>1.2 — Pré-requisitos</h3>
+  <div class="steps">
+    <div class="step"><div class="step-num"></div><div class="step-body"><strong>Conta Google ativa</strong><p>A conta <code>difernandeszrd@gmail.com</code> deve estar ativa e acessível.</p></div></div>
+    <div class="step"><div class="step-num"></div><div class="step-body"><strong>Verificação em 2 etapas (2FA) ativada</strong><p>A Senha de App só pode ser gerada se a 2FA estiver habilitada. Acesse: <strong>Conta Google → Segurança → Verificação em duas etapas</strong>.</p></div></div>
+    <div class="step"><div class="step-num"></div><div class="step-body"><strong>Acesso menos seguro desativado</strong><p>O sistema moderno usa Senha de App, que é mais segura que "acesso de apps menos seguros" (que o Google desativou em 2024).</p></div></div>
+  </div>
+
+  <h3>1.3 — Gerando a Senha de App no Google</h3>
+  <div class="steps">
+    <div class="step"><div class="step-num"></div><div class="step-body"><strong>Acessar o gerenciador de Senhas de App</strong><p>Vá para: <code>https://myaccount.google.com/apppasswords</code><br>Faça login com a conta <code>difernandeszrd@gmail.com</code>.</p></div></div>
+    <div class="step"><div class="step-num"></div><div class="step-body"><strong>Criar nova senha</strong><p>No campo "Nome do app", digite um nome identificador (ex: <strong>cadform</strong> ou <strong>sucform-easypanel</strong>) e clique em <strong>Criar</strong>.</p></div></div>
+    <div class="step"><div class="step-num"></div><div class="step-body"><strong>Copiar a senha gerada</strong><p>O Google exibirá uma senha de <strong>16 caracteres</strong> formatada em 4 grupos de 4 letras (ex: <code>dwou hzqp lxqj nfgs</code>).<br><strong>⚠️ Importante:</strong> Remova os espaços antes de usar no código!</p></div></div>
+    <div class="step"><div class="step-num"></div><div class="step-body"><strong>Salvar com segurança</strong><p>Esta senha só é exibida uma vez. Guarde-a em local seguro. Se perder, gere uma nova.</p></div></div>
+  </div>
+
+  <div class="alert alert-warning">
+    <div class="alert-icon">⚠️</div>
+    <div class="alert-body">
+      <strong>Atenção: Remova os espaços da senha!</strong>
+      O Google exibe a senha com espaços para facilitar a leitura, mas o Nodemailer precisa da senha <strong>sem espaços</strong> para autenticar via SMTP. Use <code>dwouhzqplxqjnfgs</code> e não <code>dwou hzqp lxqj nfgs</code>.
+    </div>
+  </div>
+
+  <h3>1.4 — Configurando no Código (send-email.js)</h3>
+  <p>O arquivo <code>api/send-email.js</code> contém a lógica de envio. As credenciais são carregadas via variáveis de ambiente com fallback hardcoded (mesma abordagem do Supabase):</p>
+
+<pre><span class="comment">// api/send-email.js — Configuração do transporter Nodemailer</span>
+<span class="key">const</span> gmailUser     = process.env.<span class="val">GMAIL_USER</span>         || <span class="str">'difernandeszrd@gmail.com'</span>;
+<span class="key">const</span> gmailAppPass  = process.env.<span class="val">GMAIL_APP_PASSWORD</span> || <span class="str">'dwouhzqplxqjnfgs'</span>;
+<span class="key">const</span> fromName      = process.env.<span class="val">GMAIL_FROM_NAME</span>    || <span class="str">'Semana Universitária Cajuruense'</span>;
+
+<span class="key">const</span> transporter = nodemailer.createTransport({
+  host: <span class="str">'smtp.gmail.com'</span>,
+  port: <span class="num">587</span>,
+  secure: <span class="num">false</span>,     <span class="comment">// STARTTLS — NÃO usar true aqui</span>
+  requireTLS: <span class="num">true</span>,
+  auth: { user: gmailUser, pass: gmailAppPass },
+  tls: { rejectUnauthorized: <span class="num">false</span> } <span class="comment">// necessário em alguns ambientes</span>
+});</pre>
+
+  <div class="alert alert-info">
+    <div class="alert-icon">ℹ️</div>
+    <div class="alert-body">
+      <strong>Por que porta 587 e não 465?</strong>
+      A porta 465 (SSL direto) apresentou erro de certificado self-signed em ambiente de desenvolvimento Windows com antivírus. A porta 587 (STARTTLS) funciona corretamente em todos os ambientes testados: Windows local, EasyPanel/Linux e containers Docker.
+    </div>
+  </div>
+
+  <h3>1.5 — Variáveis de Ambiente</h3>
+  <div class="env-card">
+    <div class="env-row">
+      <div><div class="env-key">GMAIL_USER</div><div class="env-desc">Endereço do remetente</div></div>
+      <div class="env-val">difernandeszrd@gmail.com</div>
+    </div>
+    <div class="env-row">
+      <div><div class="env-key">GMAIL_APP_PASSWORD</div><div class="env-desc">Senha de App (sem espaços, 16 chars)</div></div>
+      <div class="env-val">dwouhzqplxqjnfgs</div>
+    </div>
+    <div class="env-row">
+      <div><div class="env-key">GMAIL_FROM_NAME</div><div class="env-desc">Nome exibido no campo "De:" do e-mail</div></div>
+      <div class="env-val">Semana Universitária Cajuruense</div>
+    </div>
+  </div>
+
+  <div class="alert alert-warning">
+    <div class="alert-icon">⚠️</div>
+    <div class="alert-body">
+      <strong>Comportamento das variáveis no EasyPanel com Nixpacks</strong>
+      O EasyPanel/Nixpacks injeta as variáveis <em>durante o build</em> (para o Vite), mas não necessariamente no runtime do container Node.js. Por isso, o padrão <code>process.env.VAR || 'valor_padrão'</code> garante funcionamento mesmo sem injeção de runtime.
+    </div>
+  </div>
+</div>
+
+<!-- Continuação Parte 1 -->
+<div class="page page-break">
+
+  <h3>1.6 — Diferença: Senha de App vs OAuth2</h3>
+  <table>
+    <thead>
+      <tr><th>Critério</th><th>Senha de App ✅ (atual)</th><th>OAuth2 ❌ (removido)</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Configuração</td><td>Simples — 1 string</td><td>Complexa — Client ID, Secret, Refresh Token</td></tr>
+      <tr><td>Expiração</td><td>Não expira</td><td>Refresh Token expira (~6 meses sem uso)</td></tr>
+      <tr><td>Renovação</td><td>Não necessária</td><td>Necessária periodicamente</td></tr>
+      <tr><td>Segurança</td><td>Boa (2FA obrigatório)</td><td>Alta (padrão moderno)</td></tr>
+      <tr><td>Adequado para</td><td>Apps simples/eventos</td><td>Apps com usuários autenticados</td></tr>
+      <tr><td>O que causou falha</td><td>—</td><td>Token expirou: <code>invalid_grant</code></td></tr>
+    </tbody>
+  </table>
+
+  <h3>1.7 — Teste de Conexão SMTP</h3>
+  <p>Para verificar se as credenciais estão corretas, execute localmente:</p>
+
+<pre><span class="comment"># 1. Na raiz do projeto, crie um arquivo test-smtp.mjs</span>
+<span class="comment"># 2. Execute com as variáveis do .env.local</span>
+npx dotenv-cli -e .env.local -- node test-smtp.mjs
+
+<span class="comment"># Saída esperada (sucesso):</span>
+<span class="val">GMAIL_APP_PASSWORD length: 16</span>
+<span class="val">GMAIL_APP_PASSWORD tem espaço: false</span>
+<span class="val">✅ Conexão SMTP (porta 587) verificada com sucesso!</span></pre>
+
+  <h3>1.8 — Diagnóstico de Erros Comuns</h3>
+
+  <h4>Erro: <code>Username and Password not accepted</code></h4>
+  <div class="alert alert-danger">
+    <div class="alert-icon">❌</div>
+    <div class="alert-body">
+      <strong>Causa:</strong> Senha de App incorreta, com espaços ou expirada.<br>
+      <strong>Solução:</strong> Acesse <code>myaccount.google.com/apppasswords</code>, revogue a senha atual e gere uma nova. Certifique-se de copiar sem espaços.
+    </div>
+  </div>
+
+  <h4>Erro: <code>self-signed certificate in certificate chain</code></h4>
+  <div class="alert alert-warning">
+    <div class="alert-icon">⚠️</div>
+    <div class="alert-body">
+      <strong>Causa:</strong> Antivírus ou proxy de rede interceptando a conexão SSL (comum no Windows).<br>
+      <strong>Solução:</strong> Usar porta 587 com <code>tls: &#123; rejectUnauthorized: false &#125;</code>.
+    </div>
+  </div>
+
+  <h4>Erro: <code>GMAIL_USER / GMAIL_APP_PASSWORD não configuradas</code></h4>
+  <div class="alert alert-danger">
+    <div class="alert-icon">❌</div>
+    <div class="alert-body">
+      <strong>Causa:</strong> Variáveis de ambiente não disponíveis em runtime no EasyPanel.<br>
+      <strong>Solução:</strong> Usar o padrão <code>process.env.VAR || 'fallback'</code> no código. Variáveis de build do Nixpacks não são automaticamente injetadas no processo Node.js em runtime.
+    </div>
+  </div>
+
+  <h4>Erro: <code>invalid_grant: Token has been expired or revoked</code></h4>
+  <div class="alert alert-danger">
+    <div class="alert-icon">❌</div>
+    <div class="alert-body">
+      <strong>Causa:</strong> Este erro ocorre apenas com OAuth2 (não com Senha de App). O Refresh Token expirou.<br>
+      <strong>Solução:</strong> Migrar para Senha de App (já implementado). OAuth2 não deve mais ser usado neste projeto.
+    </div>
+  </div>
+
+  <h3>1.9 — Validade e Manutenção</h3>
+  <table>
+    <thead>
+      <tr><th>Situação</th><th>Impacto</th><th>Ação necessária</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Operação normal</td><td>Nenhum — funciona indefinidamente</td><td>Nenhuma</td></tr>
+      <tr><td>Troca de senha da conta Google</td><td>Todas as senhas de app são revogadas</td><td>Gerar nova senha de app e atualizar o código</td></tr>
+      <tr><td>Desativação da 2FA</td><td>Senhas de app são desativadas</td><td>Reativar 2FA e gerar nova senha</td></tr>
+      <tr><td>Revogação manual</td><td>Apenas a senha revogada para</td><td>Gerar nova senha no painel Google</td></tr>
+      <tr><td>Detecção de atividade suspeita</td><td>Google pode revogar preventivamente</td><td>Verificar segurança da conta e gerar nova senha</td></tr>
+    </tbody>
+  </table>
+
+  <div class="alert alert-success">
+    <div class="alert-icon">✅</div>
+    <div class="alert-body">
+      <strong>Para o evento da Semana Universitária Cajuruense:</strong> A configuração atual com Senha de App é estável e não requer manutenção periódica. Enquanto a conta Google e a 2FA estiverem ativas, o envio de e-mails funcionará normalmente.
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════ PARTE 2: SUPABASE -->
+<div class="page page-break">
+  <div class="section-header">
+    <div class="section-icon icon-green">🗄️</div>
+    <div class="section-header-text">
+      <h2>Parte 2 — Supabase</h2>
+      <p>Configuração do banco de dados PostgreSQL para armazenamento dos inscritos</p>
+    </div>
+  </div>
+
+  <h3>2.1 — Visão Geral do Serviço</h3>
+  <p>O <strong>Supabase</strong> é um Backend-as-a-Service baseado em PostgreSQL. No projeto, é usado para armazenar os dados de inscrição dos participantes. A comunicação é feita via SDK JavaScript (<code>@supabase/supabase-js</code>) usando a chave publicável no frontend.</p>
+
+  <table>
+    <thead><tr><th>Componente</th><th>Descrição</th></tr></thead>
+    <tbody>
+      <tr><td>Projeto</td><td><code>hnqzpwxdarllezyhijqh</code> (ID do projeto)</td></tr>
+      <tr><td>URL da API</td><td><code>https://hnqzpwxdarllezyhijqh.supabase.co</code></td></tr>
+      <tr><td>Chave</td><td><code>sb_publishable_5e8E8brZs6dS08og8slVPQ_durURMQH</code></td></tr>
+      <tr><td>Tipo de chave</td><td>Publishable (pública — segura para usar no frontend)</td></tr>
+      <tr><td>Tabela principal</td><td><code>inscritos</code></td></tr>
+    </tbody>
+  </table>
+
+  <h3>2.2 — Criando um Projeto Supabase (nova configuração)</h3>
+  <div class="steps">
+    <div class="step"><div class="step-num"></div><div class="step-body"><strong>Acessar o painel</strong><p>Vá para <code>https://supabase.com</code> e faça login ou crie uma conta.</p></div></div>
+    <div class="step"><div class="step-num"></div><div class="step-body"><strong>Criar novo projeto</strong><p>Clique em <strong>New Project</strong>, escolha a organização, defina nome, senha do banco e região (preferencialmente <strong>South America — São Paulo</strong>).</p></div></div>
+    <div class="step"><div class="step-num"></div><div class="step-body"><strong>Aguardar provisionamento</strong><p>O banco de dados demora cerca de 1–2 minutos para ser criado.</p></div></div>
+    <div class="step"><div class="step-num"></div><div class="step-body"><strong>Anotar URL e chaves</strong><p>Após criação, vá em <strong>Project Settings → API</strong> e copie a <strong>Project URL</strong> e a <strong>Publishable Key</strong>.</p></div></div>
+  </div>
+
+  <h3>2.3 — Obtendo as Chaves de API</h3>
+  <p>No painel do Supabase, acesse <strong>Project Settings → API</strong>:</p>
+
+  <div class="env-card">
+    <div class="env-row">
+      <div><div class="env-key">Project URL</div><div class="env-desc">URL base da API REST</div></div>
+      <div class="env-val">https://hnqzpwxdarllezyhijqh.supabase.co</div>
+    </div>
+    <div class="env-row">
+      <div><div class="env-key">Publishable Key</div><div class="env-desc">Chave pública para o frontend <span class="badge badge-green">Segura no cliente</span></div></div>
+      <div class="env-val">sb_publishable_5e8E8brZs6dS08og8slVPQ_durURMQH</div>
+    </div>
+    <div class="env-row">
+      <div><div class="env-key">Secret Key</div><div class="env-desc">Chave secreta para o backend <span class="badge badge-red">NUNCA expor no frontend</span></div></div>
+      <div class="env-val">[use apenas no servidor, nunca no Vite/frontend]</div>
+    </div>
+  </div>
+
+  <div class="alert alert-danger">
+    <div class="alert-icon">🔒</div>
+    <div class="alert-body">
+      <strong>NUNCA use a Secret Key no frontend!</strong>
+      Variáveis com prefixo <code>VITE_</code> ficam visíveis no bundle JavaScript final (podem ser lidas por qualquer usuário). Use sempre apenas a <strong>Publishable Key</strong> (chave pública) no frontend.
+    </div>
+  </div>
+
+  <h3>2.4 — Configurando no Código (supabase.js)</h3>
+
+<pre><span class="comment">// src/supabase.js</span>
+<span class="key">import</span> { createClient } <span class="key">from</span> <span class="str">'@supabase/supabase-js'</span>;
+
+<span class="comment">// Lê do bundle Vite (injetado no build) ou do window.__ENV__ (runtime EasyPanel)</span>
+<span class="key">const</span> supabaseUrl = <span class="str">'https://hnqzpwxdarllezyhijqh.supabase.co'</span>;
+<span class="key">const</span> supabaseKey = <span class="str">'sb_publishable_5e8E8brZs6dS08og8slVPQ_durURMQH'</span>;
+
+<span class="key">export const</span> supabase = createClient(supabaseUrl, supabaseKey);</pre>
+
+</div>
+
+<!-- Continuação Parte 2 -->
+<div class="page page-break">
+
+  <h3>2.5 — Configuração da Tabela no Banco</h3>
+  <p>No painel do Supabase, acesse <strong>Table Editor → New Table</strong> ou use o <strong>SQL Editor</strong>:</p>
+
+<pre><span class="comment">-- SQL para criar a tabela de inscritos</span>
+<span class="key">CREATE TABLE</span> inscritos (
+  id              uuid          <span class="key">DEFAULT</span> gen_random_uuid() <span class="key">PRIMARY KEY</span>,
+  nome            text          <span class="key">NOT NULL</span>,
+  email           text          <span class="key">NOT NULL</span>,
+  cpf             text,
+  data_nascimento date,
+  telefone        text,
+  cidade_estado   text,
+  bairro          text,
+  chefe_de_equipe boolean       <span class="key">DEFAULT</span> <span class="num">false</span>,
+  created_at      timestamptz   <span class="key">DEFAULT</span> now()
+);
+
+<span class="comment">-- Índice para busca por e-mail</span>
+<span class="key">CREATE INDEX</span> idx_inscritos_email <span class="key">ON</span> inscritos (email);
+<span class="comment">-- Índice para busca por CPF</span>
+<span class="key">CREATE INDEX</span> idx_inscritos_cpf   <span class="key">ON</span> inscritos (cpf);</pre>
+
+  <h3>2.6 — Políticas de Segurança (RLS — Row Level Security)</h3>
+  <p>O Supabase usa RLS para controlar o acesso. Configure as políticas conforme abaixo:</p>
+
+<pre><span class="comment">-- Habilitar RLS na tabela</span>
+<span class="key">ALTER TABLE</span> inscritos <span class="key">ENABLE ROW LEVEL SECURITY</span>;
+
+<span class="comment">-- Política: qualquer pessoa pode INSERIR (formulário público)</span>
+<span class="key">CREATE POLICY</span> <span class="str">"Inscrições públicas permitidas"</span>
+  <span class="key">ON</span> inscritos <span class="key">FOR INSERT</span>
+  <span class="key">TO</span> anon
+  <span class="key">WITH CHECK</span> (<span class="num">true</span>);
+
+<span class="comment">-- Política: apenas autenticados podem SELECIONAR (painel admin)</span>
+<span class="key">CREATE POLICY</span> <span class="str">"Leitura restrita ao admin"</span>
+  <span class="key">ON</span> inscritos <span class="key">FOR SELECT</span>
+  <span class="key">TO</span> authenticated
+  <span class="key">USING</span> (<span class="num">true</span>);
+
+<span class="comment">-- Alternativa: permitir leitura pública (se o painel usa só senha client-side)</span>
+<span class="key">CREATE POLICY</span> <span class="str">"Leitura pública"</span>
+  <span class="key">ON</span> inscritos <span class="key">FOR SELECT</span>
+  <span class="key">TO</span> anon
+  <span class="key">USING</span> (<span class="num">true</span>);</pre>
+
+  <div class="alert alert-info">
+    <div class="alert-icon">ℹ️</div>
+    <div class="alert-body">
+      <strong>Política recomendada para este projeto:</strong>
+      Como o painel admin usa senha client-side (não autenticação Supabase), mantenha a leitura pública (<code>anon</code>). O acesso é protegido pelo painel que solicita a senha <code>cajuru@2026</code>.
+    </div>
+  </div>
+
+  <h3>2.7 — Diagnóstico de Erros Comuns</h3>
+
+  <h4>Erro: <code>Failed to fetch</code> / CORS</h4>
+  <div class="alert alert-danger">
+    <div class="alert-icon">❌</div>
+    <div class="alert-body">
+      <strong>Causa:</strong> URL do Supabase incorreta ou projeto pausado.<br>
+      <strong>Solução:</strong> Verifique se o projeto está ativo no painel Supabase. Projetos gratuitos pausam após 90 dias sem acesso. Clique em <strong>Restore</strong> no painel.
+    </div>
+  </div>
+
+  <h4>Erro: <code>new row violates row-level security policy</code></h4>
+  <div class="alert alert-warning">
+    <div class="alert-icon">⚠️</div>
+    <div class="alert-body">
+      <strong>Causa:</strong> A política RLS não permite INSERT para usuários anônimos.<br>
+      <strong>Solução:</strong> Adicionar a política de INSERT para <code>anon</code> conforme o SQL acima, ou desabilitar RLS temporariamente para testes.
+    </div>
+  </div>
+
+  <h4>Erro: <code>Invalid API key</code></h4>
+  <div class="alert alert-danger">
+    <div class="alert-icon">❌</div>
+    <div class="alert-body">
+      <strong>Causa:</strong> A chave foi resetada no painel Supabase ou é a chave errada (Secret vs Publishable).<br>
+      <strong>Solução:</strong> Acesse <strong>Project Settings → API</strong> e copie novamente a <strong>Publishable Key</strong>.
+    </div>
+  </div>
+
+  <h3>2.8 — Validade e Limites do Plano Gratuito</h3>
+  <table>
+    <thead><tr><th>Recurso</th><th>Limite (Free Tier)</th><th>Ação se atingir</th></tr></thead>
+    <tbody>
+      <tr><td>Armazenamento do banco</td><td>500 MB</td><td>Upgrade ou limpeza de dados</td></tr>
+      <tr><td>Transferência mensal</td><td>5 GB</td><td>Upgrade temporário</td></tr>
+      <tr><td>Requisições API</td><td>Ilimitadas (dentro dos limites)</td><td>—</td></tr>
+      <tr><td>Projetos ativos</td><td>2 projetos</td><td>Pausar um para criar outro</td></tr>
+      <tr><td>Inatividade</td><td><strong>90 dias sem acesso = projeto pausado</strong></td><td>Restaurar no painel Supabase</td></tr>
+      <tr><td>Backup automático</td><td>Não incluído no free tier</td><td>Exportar CSV manualmente</td></tr>
+    </tbody>
+  </table>
+
+  <div class="alert alert-warning">
+    <div class="alert-icon">📅</div>
+    <div class="alert-body">
+      <strong>Pós-evento:</strong> Após a Semana Universitária, exporte os dados (painel → <strong>Table Editor → Export CSV</strong>) antes que o projeto entre em inatividade. Os dados são mantidos mesmo após a pausa, mas é boa prática ter backup local.
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════ PARTE 3: EASYPANEL -->
+<div class="page page-break">
+  <div class="section-header">
+    <div class="section-icon icon-purple">⚙️</div>
+    <div class="section-header-text">
+      <h2>Parte 3 — EasyPanel (Deploy)</h2>
+      <p>Configuração do servidor, variáveis de ambiente e procedimentos de redeploy</p>
+    </div>
+  </div>
+
+  <h3>3.1 — Arquitetura do Deploy</h3>
+  <p>O EasyPanel usa o <strong>Nixpacks</strong> para gerar automaticamente um Dockerfile a partir do <code>nixpacks.toml</code> do repositório. O processo é:</p>
+
+<pre>GitHub (push) → EasyPanel detecta mudança
+    ↓
+Nixpacks lê nixpacks.toml
+    ↓
+Gera Dockerfile automaticamente (baseado em nixpacks:ubuntu)
+    ↓
+[BUILD] npm ci (NODE_ENV=development para instalar devDependencies)
+    ↓
+[BUILD] npm run build (Vite embute VITE_* no bundle JS)
+    ↓
+[RUNTIME] node server.js (porta 3000)
+    ↓
+Serve frontend (dist/) + API (/api/send-email)</pre>
+
+  <div class="alert alert-warning">
+    <div class="alert-icon">⚠️</div>
+    <div class="alert-body">
+      <strong>Importante: Build vs Runtime</strong>
+      As variáveis <code>VITE_*</code> são embutidas no bundle JavaScript durante o build (disponíveis no navegador). As variáveis <code>GMAIL_*</code> são usadas em runtime pelo Node.js — por isso precisam do padrão <code>|| 'fallback'</code> no código, já que o nixpacks pode não as injetar no processo runtime.
+    </div>
+  </div>
+
+  <h3>3.2 — Configuração do nixpacks.toml</h3>
+  <p>Este arquivo controla o processo de build no EasyPanel. Localizado na raiz do projeto:</p>
+
+<pre><span class="comment"># nixpacks.toml</span>
+[<span class="key">variables</span>]
+<span class="comment"># ── Runtime e versão Node ────────────────────────────────────────</span>
+NIXPACKS_NODE_VERSION = <span class="str">"20"</span>
+PORT                  = <span class="str">"3000"</span>
+
+<span class="comment"># ── Supabase (embutidas no bundle pelo Vite durante o build) ─────</span>
+VITE_SUPABASE_URL              = <span class="str">"https://hnqzpwxdarllezyhijqh.supabase.co"</span>
+VITE_SUPABASE_PUBLISHABLE_KEY  = <span class="str">"sb_publishable_5e8E8brZs6dS08og8slVPQ_durURMQH"</span>
+VITE_ADMIN_PASSWORD            = <span class="str">"cajuru@2026"</span>
+
+<span class="comment"># ── Gmail SMTP (disponíveis em build, com fallback no código) ─────</span>
+GMAIL_USER         = <span class="str">"difernandeszrd@gmail.com"</span>
+GMAIL_APP_PASSWORD = <span class="str">"dwouhzqplxqjnfgs"</span>
+GMAIL_FROM_NAME    = <span class="str">"Semana Universitária Cajuruense"</span>
+
+[<span class="key">phases</span>.setup]
+nixPkgs = [<span class="str">"nodejs_20"</span>, <span class="str">"npm-9_x"</span>]
+
+[<span class="key">phases</span>.install]
+cmds = [<span class="str">"NODE_ENV=development npm ci"</span>]
+
+[<span class="key">phases</span>.build]
+cmds = [<span class="str">"npm run build"</span>]
+
+[<span class="key">phases</span>.caddy]  <span class="comment"># Desativa Caddy (conflito de porta)</span>
+nixPkgs = []
+cmds    = []
+
+[<span class="key">start</span>]
+cmd = <span class="str">"node server.js"</span></pre>
+
+</div>
+
+<!-- Continuação Parte 3 -->
+<div class="page page-break">
+
+  <h3>3.3 — Variáveis de Ambiente: Build vs Runtime</h3>
+  <table>
+    <thead><tr><th>Variável</th><th>Quando é usada</th><th>Como garantir disponibilidade</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><code>VITE_SUPABASE_URL</code></td>
+        <td><span class="badge badge-blue">Build</span> Vite embute no bundle</td>
+        <td>Via <code>nixpacks.toml [variables]</code> ou hardcoded no código</td>
+      </tr>
+      <tr>
+        <td><code>VITE_SUPABASE_PUBLISHABLE_KEY</code></td>
+        <td><span class="badge badge-blue">Build</span> Vite embute no bundle</td>
+        <td>Via <code>nixpacks.toml [variables]</code> ou hardcoded no código</td>
+      </tr>
+      <tr>
+        <td><code>VITE_ADMIN_PASSWORD</code></td>
+        <td><span class="badge badge-blue">Build</span> Vite embute no bundle</td>
+        <td>Via <code>nixpacks.toml [variables]</code> ou hardcoded no código</td>
+      </tr>
+      <tr>
+        <td><code>GMAIL_USER</code></td>
+        <td><span class="badge badge-orange">Runtime</span> Node.js / server.js</td>
+        <td>Fallback hardcoded: <code>process.env.GMAIL_USER || 'email'</code></td>
+      </tr>
+      <tr>
+        <td><code>GMAIL_APP_PASSWORD</code></td>
+        <td><span class="badge badge-orange">Runtime</span> Node.js / send-email.js</td>
+        <td>Fallback hardcoded: <code>process.env.GMAIL_APP_PASSWORD || 'senha'</code></td>
+      </tr>
+      <tr>
+        <td><code>PORT</code></td>
+        <td><span class="badge badge-orange">Runtime</span> Node.js / server.js</td>
+        <td>Fallback: <code>process.env.PORT || 3000</code></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>3.4 — Procedimento de Redeploy</h3>
+  <p>Sempre que o código for alterado, siga este procedimento para atualizar o servidor em produção:</p>
+
+  <div class="steps">
+    <div class="step"><div class="step-num"></div><div class="step-body"><strong>Realizar as alterações no código local</strong><p>Edite os arquivos necessários na máquina de desenvolvimento.</p></div></div>
+    <div class="step"><div class="step-num"></div><div class="step-body"><strong>Commitar as mudanças</strong>
+<pre>git add .
+git commit -m "fix: descrição da correção"</pre>
+    </div></div>
+    <div class="step"><div class="step-num"></div><div class="step-body"><strong>Fazer push para o GitHub</strong>
+<pre>git push origin main</pre>
+    </div></div>
+    <div class="step"><div class="step-num"></div><div class="step-body"><strong>Acionar redeploy no EasyPanel</strong><p>No painel EasyPanel, acesse o serviço <strong>sucform</strong> dentro do projeto <strong>cadform</strong> e clique em <strong>Deploy</strong> (ou <strong>Redeploy</strong> se já estava em execução).</p></div></div>
+    <div class="step"><div class="step-num"></div><div class="step-body"><strong>Acompanhar os logs de build</strong><p>Aguarde o build completar. O log deve terminar com:<br><code>### Success</code></p></div></div>
+    <div class="step"><div class="step-num"></div><div class="step-body"><strong>Verificar logs de startup</strong><p>Após o deploy, verifique os logs do container:</p>
+<div class="log-block">
+<span class="log-ok">🚀 Servidor rodando na porta 3000</span><br>
+<span class="log-info">🔧 NODE_ENV: production</span><br>
+<span class="log-ok">📧 Gmail configurado: true (user: difernandeszrd@gmail.com)</span>
+</div>
+    </div></div>
+    <div class="step"><div class="step-num"></div><div class="step-body"><strong>Testar o envio de e-mail</strong><p>Faça uma inscrição de teste no formulário e verifique se o e-mail chega na caixa de entrada.</p></div></div>
+  </div>
+
+  <h3>3.5 — Verificando Logs no EasyPanel</h3>
+  <p>Para acessar os logs em tempo real do container:</p>
+  <ol>
+    <li>Acesse o EasyPanel → Projeto <strong>cadform</strong> → Serviço <strong>sucform</strong></li>
+    <li>Clique na aba <strong>Logs</strong></li>
+    <li>Monitore o log de startup e as requisições de e-mail</li>
+  </ol>
+
+  <h4>Logs esperados de funcionamento normal:</h4>
+  <div class="log-block">
+<span class="log-ok">🚀 Servidor rodando na porta 3000</span><br>
+<span class="log-info">🔧 NODE_ENV: production</span><br>
+<span class="log-ok">📧 Gmail configurado: true (user: difernandeszrd@gmail.com)</span><br>
+<span class="log-neutral">---</span><br>
+<span class="log-info">📨 [send-email] Requisição recebida para: usuario@email.com</span><br>
+<span class="log-info">📧 Enviando e-mail para: usuario@email.com via Gmail SMTP (Senha de App)...</span><br>
+<span class="log-ok">✅ E-mail enviado com sucesso! Message ID: &lt;abc123@gmail.com&gt;</span>
+  </div>
+
+  <h4>Logs de erro — e o que fazer:</h4>
+  <div class="log-block">
+<span class="log-err">❌ Variáveis de ambiente Gmail não configuradas</span>
+<span class="log-neutral">  → Verificar se o fallback está no código (process.env.GMAIL_USER || '...')</span><br><br>
+<span class="log-err">❌ Erro ao enviar e-mail via Gmail SMTP: Invalid login</span>
+<span class="log-neutral">  → Senha de App incorreta — gerar nova em myaccount.google.com/apppasswords</span><br><br>
+<span class="log-warn">⚠️ Gmail configurado: false</span>
+<span class="log-neutral">  → Variável de ambiente não injetada — verificar fallback no server.js</span>
+  </div>
+
+  <h3>3.6 — Health-Check da API</h3>
+  <p>A rota <code>/api/health</code> retorna o status dos serviços configurados:</p>
+
+<pre><span class="comment"># Verificar saúde do servidor em produção</span>
+curl https://SEU_DOMINIO/api/health
+
+<span class="comment"># Resposta esperada:</span>
+{
+  <span class="str">"status"</span>: <span class="str">"ok"</span>,
+  <span class="str">"providers"</span>: {
+    <span class="str">"gmail"</span>: <span class="num">true</span>,
+    <span class="str">"supabase"</span>: <span class="num">true</span>
+  },
+  <span class="str">"supabaseUrl"</span>: <span class="str">"https://hnqzpwxdarllezyhijqh.supabase.co"</span>,
+  <span class="str">"env"</span>: <span class="str">"production"</span>
+}</pre>
+
+</div>
+
+<!-- Apêndice -->
+<div class="page page-break">
+  <div class="section-header">
+    <div class="section-icon icon-orange">📋</div>
+    <div class="section-header-text">
+      <h2>Apêndice — Checklists e Fluxos</h2>
+      <p>Listas de verificação para configuração inicial, manutenção e fluxo completo</p>
+    </div>
+  </div>
+
+  <h3>A — Checklist de Configuração Inicial</h3>
+  <table>
+    <thead><tr><th>Item</th><th>Status</th><th>Verificação</th></tr></thead>
+    <tbody>
+      <tr><td>Conta Google com 2FA ativada</td><td><span class="badge badge-green">✓ OK</span></td><td><code>myaccount.google.com/security</code></td></tr>
+      <tr><td>Senha de App gerada (sem espaços)</td><td><span class="badge badge-green">✓ OK</span></td><td><code>myaccount.google.com/apppasswords</code></td></tr>
+      <tr><td><code>GMAIL_APP_PASSWORD</code> sem espaços no código</td><td><span class="badge badge-green">✓ OK</span></td><td>Verificar: <code>length === 16</code></td></tr>
+      <tr><td>SMTP na porta 587 (não 465)</td><td><span class="badge badge-green">✓ OK</span></td><td><code>api/send-email.js: port: 587</code></td></tr>
+      <tr><td>Projeto Supabase ativo</td><td><span class="badge badge-green">✓ OK</span></td><td>Login em <code>supabase.com</code></td></tr>
+      <tr><td>Tabela <code>inscritos</code> criada</td><td><span class="badge badge-green">✓ OK</span></td><td>Table Editor no Supabase</td></tr>
+      <tr><td>Políticas RLS configuradas</td><td><span class="badge badge-green">✓ OK</span></td><td>INSERT permitido para anon</td></tr>
+      <tr><td>Fallback hardcoded no <code>send-email.js</code></td><td><span class="badge badge-green">✓ OK</span></td><td><code>process.env.GMAIL_USER || '...'</code></td></tr>
+      <tr><td>Fallback hardcoded no <code>server.js</code></td><td><span class="badge badge-green">✓ OK</span></td><td>Health-check e log de startup</td></tr>
+      <tr><td>nixpacks.toml com variáveis Gmail</td><td><span class="badge badge-green">✓ OK</span></td><td>Seção <code>[variables]</code></td></tr>
+      <tr><td>Build no EasyPanel com sucesso</td><td><span class="badge badge-green">✓ OK</span></td><td>Log: <code>### Success</code></td></tr>
+      <tr><td>E-mail de teste recebido</td><td><span class="badge badge-green">✓ OK</span></td><td>Fazer inscrição de teste</td></tr>
+    </tbody>
+  </table>
+
+  <h3>B — Checklist de Manutenção Periódica</h3>
+  <table>
+    <thead><tr><th>Frequência</th><th>Ação</th><th>Onde</th></tr></thead>
+    <tbody>
+      <tr><td>Durante o evento</td><td>Monitorar logs do EasyPanel</td><td>Painel EasyPanel → Logs</td></tr>
+      <tr><td>Após o evento</td><td>Exportar dados dos inscritos (CSV)</td><td>Supabase → Table Editor → Export</td></tr>
+      <tr><td>Se trocar senha Google</td><td>Gerar nova Senha de App e atualizar o código</td><td><code>myaccount.google.com/apppasswords</code></td></tr>
+      <tr><td>Se e-mail parar de funcionar</td><td>Verificar logs e senha de app</td><td>EasyPanel Logs + Google Account</td></tr>
+      <tr><td>A cada 90 dias (pós-evento)</td><td>Acessar o painel Supabase para evitar pausa</td><td><code>supabase.com</code></td></tr>
+    </tbody>
+  </table>
+
+  <h3>C — Fluxo Completo de Envio de E-mail</h3>
+
+<pre>Usuário preenche e submete o formulário
+    ↓
+[Frontend - React/Vite]
+  → Dados validados no cliente
+  → supabase.from('inscritos').insert(dados)   ← grava no banco
+  → fetch('/api/send-email', { body: dados })   ← chama o backend
+    ↓
+[Backend - server.js / Express]
+  → Recebe POST em /api/send-email
+  → Delega para o handler em api/send-email.js
+    ↓
+[Handler - api/send-email.js]
+  → Lê credenciais (env || fallback)
+  → Monta HTML do e-mail de confirmação
+  → nodemailer.createTransport({ host: 'smtp.gmail.com', port: 587 })
+  → transporter.sendMail({ from, to: email_do_inscrito, html })
+    ↓
+[Gmail SMTP - smtp.gmail.com:587]
+  → Autentica com Senha de App (16 chars)
+  → Envia o e-mail para o destinatário
+    ↓
+[Inscrito recebe e-mail de confirmação]</pre>
+
+  <hr>
+
+  <h3>3.7 — Tabela Completa de Variáveis do Projeto</h3>
+  <table>
+    <thead>
+      <tr><th>Variável</th><th>Onde é usada</th><th>Fase</th><th>Valor atual</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>VITE_SUPABASE_URL</code></td><td>Frontend (Vite bundle)</td><td><span class="badge badge-blue">Build</span></td><td><code style="font-size:8.5pt">https://hnqzpwxdarllezyhijqh.supabase.co</code></td></tr>
+      <tr><td><code>VITE_SUPABASE_PUBLISHABLE_KEY</code></td><td>Frontend (Vite bundle)</td><td><span class="badge badge-blue">Build</span></td><td><code style="font-size:8.5pt">sb_publishable_5e8E8br...</code></td></tr>
+      <tr><td><code>VITE_ADMIN_PASSWORD</code></td><td>Painel admin (frontend)</td><td><span class="badge badge-blue">Build</span></td><td><code>cajuru@2026</code></td></tr>
+      <tr><td><code>GMAIL_USER</code></td><td>server.js + send-email.js</td><td><span class="badge badge-orange">Runtime</span></td><td><code>difernandeszrd@gmail.com</code></td></tr>
+      <tr><td><code>GMAIL_APP_PASSWORD</code></td><td>send-email.js (SMTP auth)</td><td><span class="badge badge-orange">Runtime</span></td><td><code>dwouhzqplxqjnfgs</code></td></tr>
+      <tr><td><code>GMAIL_FROM_NAME</code></td><td>send-email.js (campo De:)</td><td><span class="badge badge-orange">Runtime</span></td><td><code>Semana Universitária Cajuruense</code></td></tr>
+      <tr><td><code>PORT</code></td><td>server.js (porta de escuta)</td><td><span class="badge badge-orange">Runtime</span></td><td><code>3000</code></td></tr>
+      <tr><td><code>NODE_ENV</code></td><td>server.js (modo de execução)</td><td><span class="badge badge-orange">Runtime</span></td><td><code>production</code></td></tr>
+    </tbody>
+  </table>
+
+  <div class="footer">
+    <div><strong>Semana Universitária Cajuruense</strong> — Documentação Técnica v1.0</div>
+    <div>Gerado em Outubro/2026 • sucform / cadform • EasyPanel + Nixpacks</div>
+  </div>
+</div>
+
+</body>
+</html>

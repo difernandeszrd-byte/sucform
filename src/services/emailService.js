@@ -1,7 +1,6 @@
 /**
  * Serviço de envio de e-mails de confirmação para inscritos.
- * Utiliza exclusivamente a rota de API do servidor (/api/send-email → Gmail OAuth2).
- * Fallback direto via Gmail OAuth2 REST API no navegador se VITE_GMAIL_* estiverem definidos (modo dev).
+ * Utiliza a rota de API do servidor (/api/send-email → Gmail SMTP com Senha de App do Google).
  */
 
 export function generateEmailHtml(participantData) {
@@ -10,8 +9,12 @@ export function generateEmailHtml(participantData) {
   const email = participantData.email || '-';
   const telefone = participantData.telefone || '-';
   const dataNasc = participantData.data_nascimento || '-';
+  const estadoCivil = participantData.estado_civil || '-';
+  const conjugeNome = participantData.conjuge_nome || '';
+  const conjugeTelefone = participantData.conjuge_telefone || '';
+  const isMenor = (estadoCivil || '').toLowerCase().includes('menor');
+  const chefe = isMenor ? 'Não aplicável (Menor)' : (participantData.chefe_de_equipe ? 'Sim' : 'Não');
   const local = [participantData.cidade_estado, participantData.bairro].filter(Boolean).join(' - ') || '-';
-  const chefe = participantData.chefe_de_equipe ? 'Sim' : 'Não';
 
   return `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -168,12 +171,20 @@ export function generateEmailHtml(participantData) {
             <td class="val-col">${email}</td>
           </tr>
           <tr>
+            <td class="label-col">Estado Civil:</td>
+            <td class="val-col">${estadoCivil}</td>
+          </tr>
+          ${conjugeNome ? `<tr>
+            <td class="label-col">Cônjuge:</td>
+            <td class="val-col">${conjugeNome}${conjugeTelefone ? ` (${conjugeTelefone})` : ''}</td>
+          </tr>` : ''}
+          <tr>
             <td class="label-col">Telefone:</td>
             <td class="val-col">${telefone}</td>
           </tr>
           <tr>
             <td class="label-col">Data de Nascimento:</td>
-            <td class="val-col">${dataNasc}</td>
+            <td class="val-col">${dataNasc}${participantData.idade ? ` (${participantData.idade} anos)` : ''}</td>
           </tr>
           <tr>
             <td class="label-col">Localização:</td>
@@ -199,80 +210,6 @@ export function generateEmailHtml(participantData) {
 </html>`;
 }
 
-/**
- * Tenta enviar via Gmail OAuth2 REST API diretamente do navegador.
- * Usado apenas como fallback em modo de desenvolvimento quando VITE_GMAIL_* estão definidos.
- */
-async function sendViaGmailOAuth2Direct(participantData) {
-  const gmailUser = import.meta.env.VITE_GMAIL_USER;
-  const clientId = import.meta.env.VITE_GMAIL_CLIENT_ID;
-  const clientSecret = import.meta.env.VITE_GMAIL_CLIENT_SECRET;
-  const refreshToken = import.meta.env.VITE_GMAIL_REFRESH_TOKEN;
-
-  if (!gmailUser || !clientId || !clientSecret || !refreshToken) {
-    return null;
-  }
-
-  try {
-    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_id: clientId,
-        client_secret: clientSecret,
-        refresh_token: refreshToken,
-        grant_type: 'refresh_token',
-      }),
-    });
-
-    const tokenData = await tokenResponse.json();
-    if (!tokenResponse.ok || !tokenData.access_token) {
-      console.warn('⚠️ Falha ao renovar token OAuth2 do Gmail:', tokenData);
-      return null;
-    }
-
-    const accessToken = tokenData.access_token;
-    const htmlContent = generateEmailHtml(participantData);
-    const subject = '🎉 Cadastro Concluído com Êxito - Semana Universitária Cajuruense';
-    const senderName = import.meta.env.VITE_GMAIL_FROM_NAME || 'Semana Universitária';
-
-    const rawMessage = [
-      `From: "${senderName}" <${gmailUser}>`,
-      `To: ${participantData.email}`,
-      `Subject: =?utf-8?B?${btoa(unescape(encodeURIComponent(subject)))}?=`,
-      'MIME-Version: 1.0',
-      'Content-Type: text/html; charset=utf-8',
-      '',
-      htmlContent,
-    ].join('\r\n');
-
-    const encodedMessage = btoa(unescape(encodeURIComponent(rawMessage)))
-      .replace(/\+/g, '-')
-      .replace(/\//g, '_')
-      .replace(/=+$/, '');
-
-    const gmailResponse = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ raw: encodedMessage }),
-    });
-
-    const sendResult = await gmailResponse.json();
-    if (gmailResponse.ok) {
-      console.log('✅ E-mail enviado via Gmail OAuth2 REST API (navegador)!', sendResult);
-      return { success: true, method: 'gmail_oauth2_rest', data: sendResult };
-    } else {
-      console.warn('⚠️ Erro retornado pela API do Gmail:', sendResult);
-      return null;
-    }
-  } catch (err) {
-    console.error('❌ Exceção ao enviar e-mail via Gmail OAuth2 (navegador):', err);
-    return null;
-  }
-}
 
 export async function sendConfirmationEmail(participantData) {
   if (!participantData?.email) {

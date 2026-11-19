@@ -47,10 +47,22 @@ export function validateCPF(cpf) {
 
 export function parseDateBR(dateStr) {
   if (!dateStr || dateStr.length < 10) return null;
-  const [day, month, year] = dateStr.split('/');
-  if (!day || !month || !year) return null;
-  const d = new Date(Number(year), Number(month) - 1, Number(day));
+  // Normaliza barras normais, barras invertidas, pontos e traços (ex: 11\11\1981 ou 11-11-1981)
+  const normalized = dateStr.replace(/[\\\\.-]/g, '/');
+  const parts = normalized.split('/');
+  if (parts.length !== 3) return null;
+  const day = Number(parts[0]);
+  const month = Number(parts[1]);
+  const year = Number(parts[2]);
+  if (!day || !month || !year || month < 1 || month > 12 || day < 1 || day > 31 || year < 1900 || year > new Date().getFullYear()) {
+    return null;
+  }
+  const d = new Date(year, month - 1, day);
   if (isNaN(d.getTime())) return null;
+  // Previne dias inválidos como 31/02
+  if (d.getFullYear() !== year || d.getMonth() !== month - 1 || d.getDate() !== day) {
+    return null;
+  }
   return d;
 }
 
@@ -60,7 +72,7 @@ export function calcAge(birthDate) {
   let age = today.getFullYear() - birthDate.getFullYear();
   const m = today.getMonth() - birthDate.getMonth();
   if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
-  return age;
+  return age >= 0 && age <= 125 ? age : null;
 }
 
 export function formatCPFDisplay(cpf) {
@@ -72,27 +84,66 @@ export async function exportToXLSX(registros) {
   const XLSX = await import('xlsx');
 
   const headers = [
-    'ID', 'CPF', 'Nome', 'E-mail', 'Estado Civil', 'Sexo',
-    'Data de Nascimento', 'Endereço', 'Bairro', 'Cidade/Estado',
-    'Telefone', 'Idade', 'Chefe de Equipe', 'Criado em',
+    'ID', 'CPF', 'Nome', 'E-mail', 'Estado Civil',
+    'Nome do Cônjuge', 'CPF do Cônjuge', 'Telefone do Cônjuge', 'Data Nasc. do Cônjuge',
+    'Sexo', 'Data de Nascimento', 'Idade', 'Endereço', 'Bairro', 'Cidade/Estado',
+    'Telefone', 'Chefe de Equipe', 'Criado em',
   ];
 
-  const rows = registros.map(r => ({
-    'ID': r.id,
-    'CPF': formatCPFDisplay(r.cpf),
-    'Nome': r.nome || '',
-    'E-mail': r.email || '',
-    'Estado Civil': r.estado_civil || '',
-    'Sexo': r.sexo || '',
-    'Data de Nascimento': r.data_nascimento || '',
-    'Endereço': r.endereco || '',
-    'Bairro': r.bairro || '',
-    'Cidade/Estado': r.cidade_estado || '',
-    'Telefone': r.telefone || '',
-    'Idade': r.idade ?? '',
-    'Chefe de Equipe': r.chefe_de_equipe ? 'Sim' : 'Não',
-    'Criado em': r.created_at ? new Date(r.created_at.seconds * 1000).toLocaleString('pt-BR') : '',
-  }));
+  const rows = registros.map(r => {
+    let idadeVal = r.idade;
+    if ((idadeVal === null || idadeVal === undefined || idadeVal === '') && r.data_nascimento) {
+      const parsed = parseDateBR(r.data_nascimento);
+      idadeVal = calcAge(parsed);
+    }
+
+    let createdStr = '';
+    if (r.created_at) {
+      const d = r.created_at.seconds ? new Date(r.created_at.seconds * 1000) : new Date(r.created_at);
+      createdStr = isNaN(d.getTime()) ? '' : d.toLocaleString('pt-BR');
+    }
+
+    // Extração inteligente de dados do cônjuge caso tenham sido gravados em campos dedicados ou anexados
+    let conjugeNome = r.conjuge_nome || r.nome_conjuge || r.esposo_nome || r.esposa_nome || '';
+    let conjugeCpf = (r.conjuge_cpf || r.cpf_conjuge || r.esposo_cpf || r.esposa_cpf) ? formatCPFDisplay(r.conjuge_cpf || r.cpf_conjuge || r.esposo_cpf || r.esposa_cpf) : '';
+    let conjugeTel = r.conjuge_telefone || r.telefone_conjuge || r.telefone_esposo || r.telefone_esposa || '';
+    let conjugeNasc = r.conjuge_data_nascimento || r.data_nascimento_conjuge || '';
+
+    if (!conjugeNome && r.estado_civil?.includes('(Cônjuge:')) {
+      const match = r.estado_civil.match(/\(Cônjuge:\s*([^|)]+)/);
+      if (match) conjugeNome = match[1].trim();
+      const matchCpf = r.estado_civil.match(/CPF:\s*([^|)]+)/);
+      if (matchCpf) conjugeCpf = formatCPFDisplay(matchCpf[1].trim());
+      const matchTel = r.estado_civil.match(/Tel:\s*([^|)]+)/);
+      if (matchTel) conjugeTel = matchTel[1].trim();
+      const matchNasc = r.estado_civil.match(/Nasc:\s*([^|)]+)/);
+      if (matchNasc) conjugeNasc = matchNasc[1].trim();
+    }
+
+    const isMenor = (r.estado_civil || '').toLowerCase().includes('menor');
+    const chefeStr = isMenor ? 'Não aplicável (Menor)' : (r.chefe_de_equipe ? 'Sim' : 'Não');
+
+    return {
+      'ID': r.id,
+      'CPF': formatCPFDisplay(r.cpf),
+      'Nome': r.nome || '',
+      'E-mail': r.email || '',
+      'Estado Civil': r.estado_civil || '',
+      'Nome do Cônjuge': conjugeNome,
+      'CPF do Cônjuge': conjugeCpf,
+      'Telefone do Cônjuge': conjugeTel ? formatPhone(conjugeTel) : '',
+      'Data Nasc. do Cônjuge': conjugeNasc,
+      'Sexo': r.sexo || '',
+      'Data de Nascimento': r.data_nascimento || '',
+      'Idade': idadeVal ?? '',
+      'Endereço': r.endereco || '',
+      'Bairro': r.bairro || '',
+      'Cidade/Estado': r.cidade_estado || '',
+      'Telefone': r.telefone ? formatPhone(r.telefone) : '',
+      'Chefe de Equipe': chefeStr,
+      'Criado em': createdStr,
+    };
+  });
 
   const worksheet = XLSX.utils.json_to_sheet(rows, { header: headers });
 

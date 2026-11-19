@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
-import { UserPlus, Lock, CheckCircle2, Mail, Send } from 'lucide-react';
-import logo from '../assets/logo.png';
+import { UserPlus, Lock, CheckCircle2, Mail, Send, Heart } from 'lucide-react';
+import bannerImg from '../assets/banner-suc.jpg';
 import {
   checkCPFExists,
   createInscricao,
@@ -29,16 +28,47 @@ export default function InscricaoForm() {
   const [loading, setLoading] = useState(false);
   const [submittedData, setSubmittedData] = useState(null);
   const [resendingEmail, setResendingEmail] = useState(false);
-  const navigate = useNavigate();
 
   const {
     register,
     handleSubmit,
     setValue,
+    setError,
     watch,
     reset,
     formState: { errors },
   } = useForm({ mode: 'onBlur' });
+
+  // Monitora data de nascimento e estado civil
+  const dataNascimentoVal = watch('data_nascimento');
+  const estadoCivilVal = watch('estado_civil');
+
+  const isMenor = estadoCivilVal === 'Menor (13 a 17 anos)';
+  const isUniaoEstavel = estadoCivilVal === 'União Estável';
+
+  const calculatedAge = useMemo(() => {
+    if (!dataNascimentoVal || dataNascimentoVal.length < 10) return null;
+    const parsed = parseDateBR(dataNascimentoVal);
+    if (!parsed) return null;
+    return calcAge(parsed);
+  }, [dataNascimentoVal]);
+
+  // Se for menor de 18 anos, desativa o interesse em ser chefe de equipe
+  useEffect(() => {
+    if (isMenor) {
+      setValue('chefe_de_equipe', 'nao');
+    }
+  }, [isMenor, setValue]);
+
+  // Se trocar de união estável para outro estado civil, limpa campos do cônjuge
+  useEffect(() => {
+    if (!isUniaoEstavel) {
+      setValue('conjuge_nome', '');
+      setValue('conjuge_cpf', '');
+      setValue('conjuge_telefone', '');
+      setValue('conjuge_data_nascimento', '');
+    }
+  }, [isUniaoEstavel, setValue]);
 
   useEffect(() => {
     getInscricoesAtivas().then(setInscricoesAtivas);
@@ -53,7 +83,17 @@ export default function InscricaoForm() {
     setValue('telefone', formatPhone(e.target.value), { shouldValidate: false });
   };
   const handleDateChange = (e) => {
-    setValue('data_nascimento', formatDate(e.target.value), { shouldValidate: false });
+    const formatted = formatDate(e.target.value);
+    setValue('data_nascimento', formatted, { shouldValidate: true, shouldDirty: true });
+  };
+  const handleConjugeCPFChange = (e) => {
+    setValue('conjuge_cpf', formatCPF(e.target.value), { shouldValidate: true, shouldDirty: true });
+  };
+  const handleConjugePhoneChange = (e) => {
+    setValue('conjuge_telefone', formatPhone(e.target.value), { shouldValidate: false });
+  };
+  const handleConjugeDateChange = (e) => {
+    setValue('conjuge_data_nascimento', formatDate(e.target.value), { shouldValidate: false });
   };
 
   const handleResendConfirmation = async () => {
@@ -66,7 +106,7 @@ export default function InscricaoForm() {
         setSubmittedData(prev => ({ ...prev, emailResult: res }));
         toast.success(`E-mail enviado com sucesso para ${submittedData.email}! 🎉`, { id: toastId });
       } else {
-        toast.error(`Aviso: ${res.message || 'Chave do Resend não configurada.'}`, { id: toastId });
+        toast.error(`Aviso: ${res.message || 'Erro ao enviar e-mail de confirmação.'}`, { id: toastId });
       }
     } catch {
       toast.error('Erro ao tentar reenviar e-mail.', { id: toastId });
@@ -94,6 +134,40 @@ export default function InscricaoForm() {
         return;
       }
 
+      // Validações de segurança do CPF da Esposa ou Esposo (quando União Estável)
+      let conjugeCpfLimpo = '';
+      if (isUniaoEstavel) {
+        conjugeCpfLimpo = cleanCPF(data.conjuge_cpf || '');
+
+        if (!conjugeCpfLimpo) {
+          toast.error('Informe o CPF da esposa ou esposo.');
+          setError('conjuge_cpf', { message: 'CPF do(a) esposo(a) é obrigatório' });
+          return;
+        }
+
+        // 1. Validação matemática do algoritmo do CPF (dígitos verificadores)
+        if (!validateCPF(conjugeCpfLimpo)) {
+          toast.error('CPF do(a) esposo(a) inválido. Verifique os números e tente novamente.');
+          setError('conjuge_cpf', { message: 'CPF inválido (dígitos incorretos)' });
+          return;
+        }
+
+        // 2. Segurança: CPF do cônjuge não pode ser igual ao CPF do titular
+        if (conjugeCpfLimpo === cpfLimpo) {
+          toast.error('O CPF do(a) esposo(a) não pode ser igual ao CPF do titular.');
+          setError('conjuge_cpf', { message: 'Não pode ser igual ao CPF do titular' });
+          return;
+        }
+
+        // 3. Segurança de duplicata de CPF: verifica se o CPF do cônjuge já existe no banco
+        const conjugeExists = await checkCPFExists(conjugeCpfLimpo);
+        if (conjugeExists) {
+          toast.error('O CPF do(a) esposo(a) já está cadastrado no sistema.');
+          setError('conjuge_cpf', { message: 'Este CPF já está cadastrado no sistema' });
+          return;
+        }
+      }
+
       // Parse and validate birth date
       const birthDate = parseDateBR(data.data_nascimento);
       if (!birthDate) {
@@ -114,8 +188,19 @@ export default function InscricaoForm() {
         bairro: data.bairro || '',
         cidade_estado: data.cidade_estado || '',
         telefone: data.telefone || '',
-        idade,
-        chefe_de_equipe: data.chefe_de_equipe === 'sim',
+        idade: idade !== null ? Number(idade) : null,
+        chefe_de_equipe: isMenor ? false : (data.chefe_de_equipe === 'sim'),
+        ...(isUniaoEstavel ? {
+          conjuge_nome: (data.conjuge_nome || '').trim(),
+          conjuge_cpf: cleanCPF(data.conjuge_cpf || ''),
+          conjuge_telefone: (data.conjuge_telefone || '').trim(),
+          conjuge_data_nascimento: (data.conjuge_data_nascimento || '').trim(),
+        } : {
+          conjuge_nome: '',
+          conjuge_cpf: '',
+          conjuge_telefone: '',
+          conjuge_data_nascimento: '',
+        }),
       };
 
       await createInscricao(novaInscricao);
@@ -233,13 +318,27 @@ export default function InscricaoForm() {
               <span className="success-details-val">{submittedData.email}</span>
             </div>
             <div className="success-details-row">
+              <span className="success-details-label">Estado Civil:</span>
+              <span className="success-details-val">{submittedData.estado_civil}</span>
+            </div>
+            {submittedData.conjuge_nome && (
+              <div className="success-details-row">
+                <span className="success-details-label">Cônjuge:</span>
+                <span className="success-details-val">{submittedData.conjuge_nome}</span>
+              </div>
+            )}
+            <div className="success-details-row">
               <span className="success-details-label">Data de Nasc.:</span>
-              <span className="success-details-val">{submittedData.data_nascimento}</span>
+              <span className="success-details-val">
+                {submittedData.data_nascimento} {submittedData.idade !== null && submittedData.idade !== undefined ? `(${submittedData.idade} anos)` : ''}
+              </span>
             </div>
             <div className="success-details-row">
               <span className="success-details-label">Interesse em Chefe:</span>
               <span className="success-details-val">
-                {submittedData.chefe_de_equipe ? 'Sim, me interesso' : 'Não me interesso'}
+                {submittedData.estado_civil?.includes('Menor')
+                  ? 'Não se aplica (Menor de idade)'
+                  : (submittedData.chefe_de_equipe ? 'Sim, me interesso' : 'Não me interesso')}
               </span>
             </div>
           </div>
@@ -264,7 +363,7 @@ export default function InscricaoForm() {
       <div className="form-container">
         {/* Header */}
         <div className="form-header">
-          <img src={logo} alt="Logo" className="form-logo" />
+          <img src={bannerImg} alt="Semana Universitária Cajuruense" className="form-banner" />
           <h1>Semana Universitária Cajuruense</h1>
           <h2>
             <UserPlus size={22} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
@@ -338,10 +437,12 @@ export default function InscricaoForm() {
                 {...register('estado_civil', { required: 'Selecione o estado civil' })}
               >
                 <option value="">Selecione</option>
-                <option value="solteiro">Solteiro(a)</option>
-                <option value="casado">Casado(a)</option>
-                <option value="divorciado">Divorciado(a)</option>
-                <option value="viuvo">Viúvo(a)</option>
+                <option value="Solteiro(a) (maior 18 anos)">Solteiro(a) (maior 18 anos)</option>
+                <option value="Menor (13 a 17 anos)">Menor (13 a 17 anos)</option>
+                <option value="Casado(a)">Casado(a)</option>
+                <option value="União Estável">União Estável</option>
+                <option value="Divorciado(a)">Divorciado(a)</option>
+                <option value="Viúvo(a)">Viúvo(a)</option>
               </select>
               {errors.estado_civil && <span className="error-msg">{errors.estado_civil.message}</span>}
             </div>
@@ -362,9 +463,9 @@ export default function InscricaoForm() {
             </div>
           </div>
 
-          {/* Row: Data Nasc + Chefe */}
+          {/* Row: Data Nasc + Idade (+ Chefe de Equipe se maior de 18 anos) */}
           <div className="form-row">
-            <div className="form-group col-4">
+            <div className={`form-group ${isMenor ? 'col-6' : 'col-3'}`}>
               <label className="form-label">
                 Data de nascimento <span className="required">*</span>
               </label>
@@ -379,22 +480,42 @@ export default function InscricaoForm() {
                 maxLength={10}
               />
               {errors.data_nascimento && <span className="error-msg">{errors.data_nascimento.message}</span>}
+            </div>
 
-            </div>
-            <div className="form-group col-8">
-              <label className="form-label">
-                Interesse em ser chefe de equipe <span className="required">*</span>
+            <div className={`form-group ${isMenor ? 'col-6' : 'col-3'}`}>
+              <label className="form-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span>Idade</span>
+                {calculatedAge !== null && (
+                  <span className="age-badge">Auto</span>
+                )}
               </label>
-              <select
-                className={`form-select ${errors.chefe_de_equipe ? 'is-invalid' : ''}`}
-                {...register('chefe_de_equipe', { required: 'Selecione uma opção' })}
-              >
-                <option value="">Selecione</option>
-                <option value="nao">Não me interesso</option>
-                <option value="sim">Sim me interesso</option>
-              </select>
-              {errors.chefe_de_equipe && <span className="error-msg">{errors.chefe_de_equipe.message}</span>}
+              <input
+                className="form-input age-display-input"
+                type="text"
+                readOnly
+                tabIndex={-1}
+                value={calculatedAge !== null ? `${calculatedAge} anos` : ''}
+                placeholder="Calculada auto."
+                title="Idade calculada automaticamente a partir da data de nascimento"
+              />
             </div>
+
+            {!isMenor && (
+              <div className="form-group col-6">
+                <label className="form-label">
+                  Interesse em ser chefe de equipe <span className="required">*</span>
+                </label>
+                <select
+                  className={`form-select ${errors.chefe_de_equipe ? 'is-invalid' : ''}`}
+                  {...register('chefe_de_equipe', { required: !isMenor ? 'Selecione uma opção' : false })}
+                >
+                  <option value="">Selecione</option>
+                  <option value="nao">Não me interesso</option>
+                  <option value="sim">Sim me interesso</option>
+                </select>
+                {errors.chefe_de_equipe && <span className="error-msg">{errors.chefe_de_equipe.message}</span>}
+              </div>
+            )}
           </div>
 
           {/* Endereço */}
@@ -448,6 +569,83 @@ export default function InscricaoForm() {
               {errors.telefone && <span className="error-msg">{errors.telefone.message}</span>}
             </div>
           </div>
+
+          {/* Subformulário de Cônjuge (exibido apenas se União Estável) */}
+          {isUniaoEstavel && (
+            <div className="spouse-section">
+              <div className="spouse-section-header">
+                <Heart size={20} className="spouse-icon" />
+                <div>
+                  <h3 className="spouse-section-title">Dados do(a) Esposo(a) / Companheiro(a)</h3>
+                  <p className="spouse-section-subtitle">Informe os dados do seu cônjuge para a União Estável</p>
+                </div>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group col-6">
+                  <label className="form-label">
+                    Nome da Esposa / Esposo <span className="required">*</span>
+                  </label>
+                  <input
+                    className={`form-input ${errors.conjuge_nome ? 'is-invalid' : ''}`}
+                    placeholder="Nome completo do(a) companheiro(a)"
+                    {...register('conjuge_nome', {
+                      required: isUniaoEstavel ? 'Nome do(a) esposo(a) é obrigatório' : false,
+                    })}
+                  />
+                  {errors.conjuge_nome && <span className="error-msg">{errors.conjuge_nome.message}</span>}
+                </div>
+
+                <div className="form-group col-6">
+                  <label className="form-label">
+                    CPF da Esposa ou Esposo <span className="required">*</span>
+                  </label>
+                  <input
+                    className={`form-input ${errors.conjuge_cpf ? 'is-invalid' : ''}`}
+                    placeholder="000.000.000-00"
+                    {...register('conjuge_cpf', {
+                      required: isUniaoEstavel ? 'CPF da esposa ou esposo é obrigatório' : false,
+                      minLength: { value: 14, message: 'CPF incompleto' },
+                      validate: (val) => {
+                        if (!isUniaoEstavel) return true;
+                        if (!val) return 'CPF da esposa ou esposo é obrigatório';
+                        const c = cleanCPF(val);
+                        if (!validateCPF(c)) return 'CPF inválido (dígitos incorretos)';
+                        return true;
+                      },
+                    })}
+                    onChange={handleConjugeCPFChange}
+                    maxLength={14}
+                  />
+                  {errors.conjuge_cpf && <span className="error-msg">{errors.conjuge_cpf.message}</span>}
+                </div>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group col-6">
+                  <label className="form-label">Telefone / WhatsApp</label>
+                  <input
+                    className="form-input"
+                    placeholder="(00) 00000-0000"
+                    {...register('conjuge_telefone')}
+                    onChange={handleConjugePhoneChange}
+                    maxLength={15}
+                  />
+                </div>
+
+                <div className="form-group col-6">
+                  <label className="form-label">Data de Nascimento</label>
+                  <input
+                    className="form-input"
+                    placeholder="dd/mm/aaaa"
+                    {...register('conjuge_data_nascimento')}
+                    onChange={handleConjugeDateChange}
+                    maxLength={10}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Required note */}
           <div className="required-note">

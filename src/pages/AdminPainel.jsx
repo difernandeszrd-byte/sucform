@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAdmin } from '../context/AdminContext';
 import { getInscricoes, getInscricoesAtivas, setInscricoesAtivas } from '../services/firestore';
-import { Users, Star, ToggleLeft, ToggleRight, Table2, Download, LogOut } from 'lucide-react';
-import logo from '../assets/logo.png';
+import { Users, Star, ToggleLeft, ToggleRight, Table2, LogOut } from 'lucide-react';
+import bannerImg from '../assets/banner-suc.jpg';
 
 export default function AdminPainel() {
   const { isAdmin, logout } = useAdmin();
@@ -14,20 +14,21 @@ export default function AdminPainel() {
 
   useEffect(() => {
     if (!isAdmin) { navigate('/admin'); return; }
-    loadData();
-  }, [isAdmin]);
 
-  async function loadData() {
-    const [inscritos, status] = await Promise.all([
-      getInscricoes(),
-      getInscricoesAtivas(),
-    ]);
-    setStats({
-      total: inscritos.length,
-      chefes: inscritos.filter(i => i.chefe_de_equipe).length,
-    });
-    setAtivas(status);
-  }
+    async function loadData() {
+      const [inscritos, status] = await Promise.all([
+        getInscricoes(),
+        getInscricoesAtivas(),
+      ]);
+      setStats({
+        total: inscritos.length,
+        chefes: inscritos.filter(i => i.chefe_de_equipe).length,
+      });
+      setAtivas(status);
+    }
+
+    loadData();
+  }, [isAdmin, navigate]);
 
   async function handleToggle() {
     setToggling(true);
@@ -47,7 +48,7 @@ export default function AdminPainel() {
     <div className="admin-page">
       <div className="admin-container">
         <div className="form-header">
-          <img src={logo} alt="Logo" className="form-logo" />
+          <img src={bannerImg} alt="Semana Universitária Cajuruense" className="form-banner" />
           <h1>Semana Universitária Cajuruense</h1>
           <h2>Painel Administrativo</h2>
         </div>

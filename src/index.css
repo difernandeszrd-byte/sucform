@@ -205,6 +205,24 @@ body {
   filter: drop-shadow(0 4px 16px rgba(99,102,241,0.3));
 }
 
+.form-banner {
+  width: 100%;
+  max-width: 560px;
+  height: auto;
+  border-radius: 16px;
+  margin: 0 auto 20px auto;
+  display: block;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  object-fit: cover;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.form-banner:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
+}
+
 .form-header h1 {
   font-size: 20px;
   font-weight: 700;
@@ -243,8 +261,10 @@ body {
   min-width: 0;
 }
 
+.col-2 { flex: 0 0 calc(16.666% - 13px); }
 .col-3 { flex: 0 0 calc(25% - 12px); }
 .col-4 { flex: 0 0 calc(33.333% - 11px); }
+.col-5 { flex: 0 0 calc(41.666% - 10px); }
 .col-6 { flex: 0 0 calc(50% - 8px); }
 .col-8 { flex: 0 0 calc(66.666% - 6px); }
 
@@ -307,6 +327,71 @@ body {
   font-size: 12px;
   color: var(--text-hint);
   margin-top: 4px;
+}
+
+.age-display-input {
+  background: rgba(99, 102, 241, 0.08) !important;
+  border-color: rgba(99, 102, 241, 0.35) !important;
+  color: #a5b4fc !important;
+  font-weight: 600;
+  cursor: default;
+}
+
+.age-display-input:focus {
+  border-color: rgba(99, 102, 241, 0.5) !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2) !important;
+}
+
+.age-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(99, 102, 241, 0.15);
+  color: #a5b4fc;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+/* ─── Spouse Section (União Estável) ─────────────────────────────────────────── */
+.spouse-section {
+  background: rgba(99, 102, 241, 0.05);
+  border: 1.5px solid rgba(99, 102, 241, 0.3);
+  border-radius: var(--radius);
+  padding: 20px 22px;
+  margin: 10px 0 24px 0;
+  animation: fadeUp 0.3s ease;
+}
+
+.spouse-section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding-bottom: 12px;
+  border-bottom: 1px dashed rgba(99, 102, 241, 0.25);
+}
+
+.spouse-icon {
+  color: #f43f5e;
+  flex-shrink: 0;
+}
+
+.spouse-section-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #e0e7ff;
+}
+
+.spouse-section-subtitle {
+  margin: 2px 0 0 0;
+  font-size: 12px;
+  color: var(--text-hint);
 }
 
 /* ─── Required Note ──────────────────────────────────────────────────────────── */
@@ -728,7 +813,7 @@ body {
 @media (max-width: 640px) {
   .form-container { padding: 24px 20px; }
   .form-row { flex-direction: column; }
-  .col-3, .col-4, .col-6, .col-8 { flex: 1 1 100%; }
+  .col-2, .col-3, .col-4, .col-5, .col-6, .col-8 { flex: 1 1 100%; }
   .form-actions { flex-direction: column; }
   .form-actions .btn-primary { width: 100%; justify-content: center; }
   .list-header { flex-direction: column; }

@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAdmin } from '../context/AdminContext';
 import { getInscricoes, deleteInscricao } from '../services/firestore';
 import { sendConfirmationEmail } from '../services/emailService';
-import { exportToXLSX, formatCPFDisplay } from '../utils';
+import { exportToXLSX, formatCPFDisplay, parseDateBR, calcAge } from '../utils';
 import { Search, Download, Trash2, LayoutDashboard, Mail } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -18,15 +18,17 @@ export default function AdminInscritos() {
 
   useEffect(() => {
     if (!isAdmin) { navigate('/admin'); return; }
-    loadData();
-  }, [isAdmin]);
 
-  async function loadData() {
-    setLoading(true);
-    const data = await getInscricoes();
-    setRegistros(data);
-    setLoading(false);
-  }
+    async function loadData() {
+      setLoading(true);
+      const data = await getInscricoes();
+      setRegistros(data);
+      setLoading(false);
+    }
+
+    loadData();
+  }, [isAdmin, navigate]);
+
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
@@ -34,7 +36,9 @@ export default function AdminInscritos() {
     return registros.filter(r =>
       r.nome?.toLowerCase().includes(q) ||
       r.cpf?.includes(q) ||
-      r.email?.toLowerCase().includes(q)
+      r.email?.toLowerCase().includes(q) ||
+      r.conjuge_nome?.toLowerCase().includes(q) ||
+      r.estado_civil?.toLowerCase().includes(q)
     );
   }, [registros, search]);
 
@@ -59,7 +63,7 @@ export default function AdminInscritos() {
       if (res.success) {
         toast.success(`E-mail de confirmação enviado para ${registro.email}! 📬`, { id: toastId });
       } else {
-        toast.error(`Não foi possível enviar: ${res.message || 'Verifique as credenciais Gmail OAuth2 no servidor.'}`, { id: toastId });
+        toast.error(`Não foi possível enviar: ${res.message || 'Verifique as credenciais de envio de e-mail no servidor.'}`, { id: toastId });
       }
     } catch {
       toast.error('Erro inesperado ao enviar e-mail.', { id: toastId });
@@ -125,6 +129,7 @@ export default function AdminInscritos() {
                   <th>CPF</th>
                   <th>Nome</th>
                   <th>E-mail</th>
+                  <th>Estado Civil</th>
                   <th>Data Nasc.</th>
                   <th>Idade</th>
                   <th>Chefe</th>
@@ -139,12 +144,26 @@ export default function AdminInscritos() {
                     <td className="mono">{formatCPFDisplay(r.cpf)}</td>
                     <td>{r.nome}</td>
                     <td>{r.email}</td>
-                    <td>{r.data_nascimento || '-'}</td>
-                    <td>{r.idade ?? '-'}</td>
                     <td>
-                      <span className={`badge ${r.chefe_de_equipe ? 'badge-open' : 'badge-neutral'}`}>
-                        {r.chefe_de_equipe ? 'Sim' : 'Não'}
-                      </span>
+                      <div>{r.estado_civil || '-'}</div>
+                      {r.conjuge_nome && (
+                        <div style={{ fontSize: '11px', color: '#a5b4fc', marginTop: '3px' }}>
+                          💍 {r.conjuge_nome}
+                        </div>
+                      )}
+                    </td>
+                    <td>{r.data_nascimento || '-'}</td>
+                    <td>{r.idade ?? (r.data_nascimento ? calcAge(parseDateBR(r.data_nascimento)) : null) ?? '-'}</td>
+                    <td>
+                      {r.estado_civil?.toLowerCase().includes('menor') ? (
+                        <span className="badge badge-neutral" title="Menor de idade não pode ser chefe">
+                          Menor
+                        </span>
+                      ) : (
+                        <span className={`badge ${r.chefe_de_equipe ? 'badge-open' : 'badge-neutral'}`}>
+                          {r.chefe_de_equipe ? 'Sim' : 'Não'}
+                        </span>
+                      )}
                     </td>
                     <td>{formatDate(r.created_at)}</td>
                     <td>

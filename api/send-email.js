@@ -6,16 +6,31 @@ export default async function handler(req, res) {
   }
 
   const participantData = req.body || {};
-  const { nome, email, cpf, data_nascimento, chefe_de_equipe, telefone, cidade_estado, bairro } = participantData;
+  const {
+    nome,
+    email,
+    cpf,
+    data_nascimento,
+    chefe_de_equipe,
+    telefone,
+    cidade_estado,
+    bairro,
+    idade,
+    estado_civil,
+    conjuge_nome,
+    conjuge_telefone,
+  } = participantData;
 
   if (!email || !nome) {
     return res.status(400).json({ error: 'E-mail e nome são obrigatórios.' });
   }
 
   // ── Credenciais SMTP (Gmail + Senha de App) ─────────────────────────────────
-  const gmailUser     = process.env.GMAIL_USER         || 'difernandeszrd@gmail.com';
-  const gmailAppPassword = process.env.GMAIL_APP_PASSWORD || 'dwouhzqplxqjnfgs';
-  const fromName      = process.env.GMAIL_FROM_NAME    || 'Semana Universitária Cajuruense';
+  const gmailUser        = (process.env.GMAIL_USER || 'difernandeszrd@gmail.com').trim();
+  const rawPassword      = process.env.GMAIL_APP_PASSWORD || 'dwouhzqplxqjnfgs';
+  // Garante que espaços (como em 'dwou hzqp lxqj nfgs') ou aspas sejam removidos
+  const gmailAppPassword = rawPassword.replace(/\s+/g, '').replace(/['"]/g, '');
+  const fromName         = process.env.GMAIL_FROM_NAME || 'Semana Universitária Cajuruense';
 
   if (!gmailUser || !gmailAppPassword) {
     console.error('❌ Variáveis de ambiente Gmail não configuradas (GMAIL_USER / GMAIL_APP_PASSWORD).');
@@ -26,7 +41,8 @@ export default async function handler(req, res) {
 
   // ── Conteúdo do e-mail ───────────────────────────────────────────────────────
   const local = [cidade_estado, bairro].filter(Boolean).join(' - ') || '-';
-  const chefe = chefe_de_equipe ? 'Sim' : 'Não';
+  const isMenor = (estado_civil || '').toLowerCase().includes('menor');
+  const chefe = isMenor ? 'Não aplicável (Menor)' : (chefe_de_equipe ? 'Sim' : 'Não');
   const subject = '🎉 Cadastro Concluído com Êxito - Semana Universitária Cajuruense';
 
   const htmlContent = `
@@ -77,8 +93,10 @@ export default async function handler(req, res) {
               <tr><td class="label-col">Nome Completo:</td><td class="val-col">${nome}</td></tr>
               <tr><td class="label-col">CPF:</td><td class="val-col">${cpf || '-'}</td></tr>
               <tr><td class="label-col">E-mail:</td><td class="val-col">${email}</td></tr>
+              <tr><td class="label-col">Estado Civil:</td><td class="val-col">${estado_civil || '-'}</td></tr>
+              ${conjuge_nome ? `<tr><td class="label-col">Cônjuge:</td><td class="val-col">${conjuge_nome}${conjuge_telefone ? ` (${conjuge_telefone})` : ''}</td></tr>` : ''}
               <tr><td class="label-col">Telefone:</td><td class="val-col">${telefone || '-'}</td></tr>
-              <tr><td class="label-col">Data de Nasc.:</td><td class="val-col">${data_nascimento || '-'}</td></tr>
+              <tr><td class="label-col">Data de Nasc.:</td><td class="val-col">${data_nascimento || '-'}${idade ? ` (${idade} anos)` : ''}</td></tr>
               <tr><td class="label-col">Localização:</td><td class="val-col">${local}</td></tr>
               <tr><td class="label-col">Interesse em Chefe:</td><td class="val-col">${chefe}</td></tr>
             </table>
