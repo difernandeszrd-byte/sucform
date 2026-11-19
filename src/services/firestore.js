@@ -109,6 +109,7 @@ export async function createInscricao(data) {
     delete safePayload.conjuge_cpf;
     delete safePayload.conjuge_telefone;
     delete safePayload.conjuge_data_nascimento;
+    delete safePayload.aceite_lgpd;
 
     if (data.conjuge_nome) {
       const conjugeResumo = [

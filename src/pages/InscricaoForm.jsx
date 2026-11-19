@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
-import { UserPlus, Lock, CheckCircle2, Mail, Send, Heart } from 'lucide-react';
+import { UserPlus, Lock, CheckCircle2, Mail, Send, Heart, ShieldCheck } from 'lucide-react';
 import bannerImg from '../assets/banner-suc.jpg';
 import {
   checkCPFExists,
@@ -175,6 +175,13 @@ export default function InscricaoForm() {
         return;
       }
 
+      // Validação do Aviso de Privacidade (LGPD)
+      if (!data.aceite_lgpd) {
+        toast.error('Você deve assinalar e concordar com o Aviso de Privacidade para enviar seu cadastro.');
+        setError('aceite_lgpd', { message: 'Você deve assinalar e concordar com o Aviso de Privacidade' });
+        return;
+      }
+
       const idade = calcAge(birthDate);
 
       const novaInscricao = {
@@ -190,6 +197,7 @@ export default function InscricaoForm() {
         telefone: data.telefone || '',
         idade: idade !== null ? Number(idade) : null,
         chefe_de_equipe: isMenor ? false : (data.chefe_de_equipe === 'sim'),
+        aceite_lgpd: true,
         ...(isUniaoEstavel ? {
           conjuge_nome: (data.conjuge_nome || '').trim(),
           conjuge_cpf: cleanCPF(data.conjuge_cpf || ''),
@@ -646,6 +654,34 @@ export default function InscricaoForm() {
               </div>
             </div>
           )}
+
+          {/* Aviso de Privacidade – Proteção de Dados Pessoais (LGPD) */}
+          <div className="privacy-section">
+            <div className="privacy-section-header">
+              <ShieldCheck size={22} className="privacy-icon" />
+              <h3 className="privacy-title">Aviso de Privacidade – Proteção de Dados Pessoais</h3>
+            </div>
+            <p className="privacy-text">
+              Os dados pessoais coletados por meio deste formulário serão tratados em conformidade com a Lei Federal nº 13.709/2018 – Lei Geral de Proteção de Dados Pessoais (LGPD), sendo utilizados exclusivamente para fins de organização, planejamento e realização da Semana Universitária. Os dados serão armazenados e utilizados de forma segura, respeitando os princípios de finalidade, necessidade, transparência e segurança, não sendo compartilhados com terceiros, salvo quando necessário e permitido pela legislação vigente.
+            </p>
+            <label className={`privacy-consent-wrapper ${errors.aceite_lgpd ? 'is-invalid' : ''}`}>
+              <input
+                type="checkbox"
+                className="privacy-checkbox"
+                {...register('aceite_lgpd', {
+                  required: 'Você deve assinalar e concordar com o Aviso de Privacidade para enviar seu cadastro.',
+                })}
+              />
+              <span className="privacy-label">
+                Li, compreendi e concordo com o <strong>Aviso de Privacidade</strong> e autorizo o tratamento dos meus dados pessoais para a Semana Universitária. <span className="required">*</span>
+              </span>
+            </label>
+            {errors.aceite_lgpd && (
+              <span className="error-msg" style={{ marginTop: '8px', display: 'block' }}>
+                {errors.aceite_lgpd.message}
+              </span>
+            )}
+          </div>
 
           {/* Required note */}
           <div className="required-note">

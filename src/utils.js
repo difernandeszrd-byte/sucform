@@ -87,7 +87,7 @@ export async function exportToXLSX(registros) {
     'ID', 'CPF', 'Nome', 'E-mail', 'Estado Civil',
     'Nome do Cônjuge', 'CPF do Cônjuge', 'Telefone do Cônjuge', 'Data Nasc. do Cônjuge',
     'Sexo', 'Data de Nascimento', 'Idade', 'Endereço', 'Bairro', 'Cidade/Estado',
-    'Telefone', 'Chefe de Equipe', 'Criado em',
+    'Telefone', 'Chefe de Equipe', 'Aceite LGPD', 'Criado em',
   ];
 
   const rows = registros.map(r => {
@@ -141,6 +141,7 @@ export async function exportToXLSX(registros) {
       'Cidade/Estado': r.cidade_estado || '',
       'Telefone': r.telefone ? formatPhone(r.telefone) : '',
       'Chefe de Equipe': chefeStr,
+      'Aceite LGPD': r.aceite_lgpd === false ? 'Não' : 'Sim',
       'Criado em': createdStr,
     };
   });
