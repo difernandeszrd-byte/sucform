@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
-import { UserPlus, Lock, CheckCircle2, Mail, Send, Heart, ShieldCheck } from 'lucide-react';
+import { UserPlus, Lock, CheckCircle2, Mail, Send, Heart, ShieldCheck, Calendar } from 'lucide-react';
 import bannerImg from '../assets/banner-suc.jpg';
 import {
   checkCPFExists,
@@ -379,6 +379,22 @@ export default function InscricaoForm() {
             <UserPlus size={22} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
             Nova Inscrição
           </h2>
+
+          {/* Aviso de Período e Contato */}
+          <div className="period-notice-card">
+            <div className="period-notice-dates">
+              <Calendar size={18} className="period-notice-icon" />
+              <span>
+                <strong>Período de Inscrições:</strong> 16 a 30 de NOVEMBRO de 2026
+              </span>
+            </div>
+            <div className="period-notice-contact">
+              Ligue para <a href="tel:1636679938">(16) 3667-9938</a> ou envie uma mensagem para o Instagram{' '}
+              <a href="https://instagram.com/culturacajuru" target="_blank" rel="noopener noreferrer">
+                @culturacajuru
+              </a>
+            </div>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} noValidate>
