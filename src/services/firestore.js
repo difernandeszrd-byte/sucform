@@ -30,46 +30,70 @@ function saveLocalInscricoes(list) {
 export async function checkCPFExists(cpf) {
   if (!cpf) return false;
   const clean = String(cpf).replace(/\D/g, '');
-  if (!clean) return false;
+  if (!clean || clean.length !== 11) return false;
+
+  const formatted = `${clean.slice(0,3)}.${clean.slice(3,6)}.${clean.slice(6,9)}-${clean.slice(9,11)}`;
 
   if (supabase) {
     try {
-      // 1. Verifica se já existe como CPF de titular
+      // 1. Verifica se já existe como CPF de titular (busca tanto formato limpo quanto formatado)
       const { data: titular, error: errTitular } = await supabase
         .from(SUPABASE_TABLE)
         .select('id')
-        .eq('cpf', clean)
+        .or(`cpf.eq.${clean},cpf.eq.${formatted}`)
         .limit(1);
 
       if (!errTitular && titular && titular.length > 0) return true;
 
-      // 2. Verifica se o CPF consta dentro do estado_civil (caso formato de resumo)
+      // 2. Verifica se o CPF consta dentro de estado_civil (caso formato de resumo com cônjuge)
       const { data: ecData, error: errEc } = await supabase
         .from(SUPABASE_TABLE)
         .select('id')
-        .ilike('estado_civil', `%${clean}%`)
+        .or(`estado_civil.ilike.%${clean}%,estado_civil.ilike.%${formatted}%`)
         .limit(1);
 
       if (!errEc && ecData && ecData.length > 0) return true;
 
-      // 3. Verifica se existe na coluna dedicada conjuge_cpf (se já existir na tabela)
+      // 3. Verifica se existe na coluna dedicada conjuge_cpf (se a coluna existir na tabela)
       try {
         const { data: conjuge, error: errConjuge } = await supabase
           .from(SUPABASE_TABLE)
           .select('id')
-          .eq('conjuge_cpf', clean)
+          .or(`conjuge_cpf.eq.${clean},conjuge_cpf.eq.${formatted}`)
           .limit(1);
 
         if (!errConjuge && conjuge && conjuge.length > 0) return true;
       } catch {
-        // Coluna ainda não criada na tabela
+        // Coluna conjuge_cpf ainda não criada na tabela, ignorar
       }
+
+      // IMPORTANTE: Como a consulta ao Supabase respondeu com sucesso e o CPF não consta no banco,
+      // o Supabase é a fonte oficial da verdade.
+      // Remove do cache local qualquer registro fantasma/antigo desse CPF:
+      try {
+        let list = getLocalInscricoes();
+        const initialLen = list.length;
+        list = list.filter(item => {
+          const itemCpf = String(item.cpf || '').replace(/\D/g, '');
+          const itemConjugeCpf = String(item.conjuge_cpf || '').replace(/\D/g, '');
+          return itemCpf !== clean && itemConjugeCpf !== clean;
+        });
+        if (list.length !== initialLen) {
+          saveLocalInscricoes(list);
+          console.log(`🧹 Cache fantasma do CPF ${clean} limpo do localStorage.`);
+        }
+      } catch {
+        // Ignora erro no localStorage
+      }
+
+      // Retorna false com segurança: o CPF NÃO está cadastrado no banco!
+      return false;
     } catch (e) {
-      console.warn('⚠️ Supabase checkCPF exception:', e.message);
+      console.warn('⚠️ Supabase checkCPF exception (tentando fallback local):', e.message);
     }
   }
 
-  // Fallback localStorage caso Supabase esteja temporariamente indisponível
+  // Fallback para localStorage SOMENTE se o Supabase estiver indisponível ou inacessível
   const list = getLocalInscricoes();
   return list.some(item => {
     const itemCpf = String(item.cpf || '').replace(/\D/g, '');
@@ -163,7 +187,7 @@ export async function getInscricoes() {
       if (!error && Array.isArray(data)) {
         console.log(`✅ ${data.length} inscrições carregadas do Supabase.`);
         // Normaliza registros recuperando dados do cônjuge caso tenham sido salvos no estado_civil
-        return data.map(r => {
+        const normalized = data.map(r => {
           if (!r.conjuge_nome && r.estado_civil?.includes('(Cônjuge:')) {
             const matchNome = r.estado_civil.match(/\(Cônjuge:\s*([^|)]+)/);
             const matchCpf = r.estado_civil.match(/CPF:\s*([^|)]+)/);
@@ -179,6 +203,9 @@ export async function getInscricoes() {
           }
           return r;
         });
+        // Sincroniza o cache local para refletir exatamente o estado do Supabase
+        saveLocalInscricoes(normalized);
+        return normalized;
       }
       console.warn('⚠️ Supabase getInscricoes error:', error?.message);
     } catch (e) {

@@ -44,7 +44,9 @@ export default function InscricaoForm() {
   const estadoCivilVal = watch('estado_civil');
 
   const isMenor = estadoCivilVal === 'Menor (13 a 17 anos)';
+  const isCasado = estadoCivilVal === 'Casado(a)';
   const isUniaoEstavel = estadoCivilVal === 'União Estável';
+  const hasSpouse = isCasado || isUniaoEstavel;
 
   const calculatedAge = useMemo(() => {
     if (!dataNascimentoVal || dataNascimentoVal.length < 10) return null;
@@ -60,15 +62,15 @@ export default function InscricaoForm() {
     }
   }, [isMenor, setValue]);
 
-  // Se trocar de união estável para outro estado civil, limpa campos do cônjuge
+  // Se trocar de estado civil que requer cônjuge para outro, limpa campos do cônjuge
   useEffect(() => {
-    if (!isUniaoEstavel) {
+    if (!hasSpouse) {
       setValue('conjuge_nome', '');
       setValue('conjuge_cpf', '');
       setValue('conjuge_telefone', '');
       setValue('conjuge_data_nascimento', '');
     }
-  }, [isUniaoEstavel, setValue]);
+  }, [hasSpouse, setValue]);
 
   useEffect(() => {
     getInscricoesAtivas().then(setInscricoesAtivas);
@@ -134,9 +136,9 @@ export default function InscricaoForm() {
         return;
       }
 
-      // Validações de segurança do CPF da Esposa ou Esposo (quando União Estável)
+      // Validações de segurança do CPF da Esposa ou Esposo (quando Casado(a) ou União Estável)
       let conjugeCpfLimpo = '';
-      if (isUniaoEstavel) {
+      if (hasSpouse) {
         conjugeCpfLimpo = cleanCPF(data.conjuge_cpf || '');
 
         if (!conjugeCpfLimpo) {
@@ -198,7 +200,7 @@ export default function InscricaoForm() {
         idade: idade !== null ? Number(idade) : null,
         chefe_de_equipe: isMenor ? false : (data.chefe_de_equipe === 'sim'),
         aceite_lgpd: true,
-        ...(isUniaoEstavel ? {
+        ...(hasSpouse ? {
           conjuge_nome: (data.conjuge_nome || '').trim(),
           conjuge_cpf: cleanCPF(data.conjuge_cpf || ''),
           conjuge_telefone: (data.conjuge_telefone || '').trim(),
@@ -578,14 +580,18 @@ export default function InscricaoForm() {
             </div>
           </div>
 
-          {/* Subformulário de Cônjuge (exibido apenas se União Estável) */}
-          {isUniaoEstavel && (
+          {/* Subformulário de Cônjuge (exibido para Casado(a) e União Estável) */}
+          {hasSpouse && (
             <div className="spouse-section">
               <div className="spouse-section-header">
                 <Heart size={20} className="spouse-icon" />
                 <div>
-                  <h3 className="spouse-section-title">Dados do(a) Esposo(a) / Companheiro(a)</h3>
-                  <p className="spouse-section-subtitle">Informe os dados do seu cônjuge para a União Estável</p>
+                  <h3 className="spouse-section-title">Dados do(a) Esposo(a) / Cônjuge</h3>
+                  <p className="spouse-section-subtitle">
+                    {isCasado
+                      ? 'Informe os dados do seu cônjuge para o cadastro de Casado(a)'
+                      : 'Informe os dados do seu cônjuge para a União Estável'}
+                  </p>
                 </div>
               </div>
 
@@ -598,7 +604,7 @@ export default function InscricaoForm() {
                     className={`form-input ${errors.conjuge_nome ? 'is-invalid' : ''}`}
                     placeholder="Nome completo do(a) companheiro(a)"
                     {...register('conjuge_nome', {
-                      required: isUniaoEstavel ? 'Nome do(a) esposo(a) é obrigatório' : false,
+                      required: hasSpouse ? 'Nome do(a) esposo(a) é obrigatório' : false,
                     })}
                   />
                   {errors.conjuge_nome && <span className="error-msg">{errors.conjuge_nome.message}</span>}
@@ -612,10 +618,10 @@ export default function InscricaoForm() {
                     className={`form-input ${errors.conjuge_cpf ? 'is-invalid' : ''}`}
                     placeholder="000.000.000-00"
                     {...register('conjuge_cpf', {
-                      required: isUniaoEstavel ? 'CPF da esposa ou esposo é obrigatório' : false,
+                      required: hasSpouse ? 'CPF da esposa ou esposo é obrigatório' : false,
                       minLength: { value: 14, message: 'CPF incompleto' },
                       validate: (val) => {
-                        if (!isUniaoEstavel) return true;
+                        if (!hasSpouse) return true;
                         if (!val) return 'CPF da esposa ou esposo é obrigatório';
                         const c = cleanCPF(val);
                         if (!validateCPF(c)) return 'CPF inválido (dígitos incorretos)';
