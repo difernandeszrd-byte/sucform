@@ -28,8 +28,10 @@ ENV PORT=3000
 # ── Gmail SMTP (Senha de App) — usadas pelo server.js em runtime ──────────────
 # IMPORTANTE: Estas vars devem ser sobrescritas via EasyPanel > Environment
 # para não expor credenciais no repositório.
-ENV GMAIL_USER=difernandeszrd@gmail.com
-ENV GMAIL_APP_PASSWORD=dwouhzqplxqjnfgs
+ENV GMAIL_USER=zrdeltatec@gmail.com
+ENV GMAIL_APP_PASSWORD=tblquqhatpekyirg
+ENV GMAIL_USER_BACKUP=difernandeszrd@gmail.com
+ENV GMAIL_APP_PASSWORD_BACKUP=dwouhzqplxqjnfgs
 ENV GMAIL_FROM_NAME=Semana Universitária Cajuruense
 
 EXPOSE 3000

@@ -26,9 +26,9 @@ export default async function handler(req, res) {
   }
 
   // ── Credenciais SMTP (Gmail + Senha de App) ─────────────────────────────────
-  const gmailUser        = (process.env.GMAIL_USER || 'difernandeszrd@gmail.com').trim();
-  const rawPassword      = process.env.GMAIL_APP_PASSWORD || 'dwouhzqplxqjnfgs';
-  // Garante que espaços (como em 'dwou hzqp lxqj nfgs') ou aspas sejam removidos
+  const gmailUser        = (process.env.GMAIL_USER || 'zrdeltatec@gmail.com').trim();
+  const rawPassword      = process.env.GMAIL_APP_PASSWORD || 'tblquqhatpekyirg';
+  // Garante que espaços (como em 'tblq uqha tpek yirg') ou aspas sejam removidos
   const gmailAppPassword = rawPassword.replace(/\s+/g, '').replace(/['"]/g, '');
   const fromName         = process.env.GMAIL_FROM_NAME || 'Semana Universitária Cajuruense';
 
@@ -127,8 +127,8 @@ export default async function handler(req, res) {
   ];
 
   // Conta de contingência / backup caso a principal atinja a cota diária do Gmail (500/dia)
-  const backupUser = (process.env.GMAIL_USER_BACKUP || process.env.SMTP_USER_BACKUP || '').trim();
-  const backupPass = (process.env.GMAIL_APP_PASSWORD_BACKUP || process.env.SMTP_PASSWORD_BACKUP || '')
+  const backupUser = (process.env.GMAIL_USER_BACKUP || process.env.SMTP_USER_BACKUP || 'difernandeszrd@gmail.com').trim();
+  const backupPass = (process.env.GMAIL_APP_PASSWORD_BACKUP || process.env.SMTP_PASSWORD_BACKUP || 'dwouhzqplxqjnfgs')
     .replace(/\s+/g, '')
     .replace(/['"]/g, '');
 

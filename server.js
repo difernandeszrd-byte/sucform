@@ -38,8 +38,8 @@ app.use(express.json());
 
 // ── Health-check (útil para diagnóstico no EasyPanel) ──
 app.get('/api/health', (_req, res) => {
-  const gmailUser = (process.env.GMAIL_USER || 'difernandeszrd@gmail.com').trim();
-  const gmailPass = (process.env.GMAIL_APP_PASSWORD || 'dwouhzqplxqjnfgs').replace(/\s+/g, '').replace(/['"]/g, '');
+  const gmailUser = (process.env.GMAIL_USER || 'zrdeltatec@gmail.com').trim();
+  const gmailPass = (process.env.GMAIL_APP_PASSWORD || 'tblquqhatpekyirg').replace(/\s+/g, '').replace(/['"]/g, '');
   const hasGmail   = !!(gmailUser && gmailPass);
   const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://hnqzpwxdarllezyhijqh.supabase.co';
   const supabaseKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_5e8E8brZs6dS08og8slVPQ_durURMQH';
@@ -116,6 +116,6 @@ app.listen(PORT, '0.0.0.0', () => {
     }
   }
   console.log(`🔧 NODE_ENV: ${process.env.NODE_ENV || 'development'}`);
-  const gmailUser = (process.env.GMAIL_USER || 'difernandeszrd@gmail.com').trim();
+  const gmailUser = (process.env.GMAIL_USER || 'zrdeltatec@gmail.com').trim();
   console.log(`📧 Gmail configurado: true (user: ${gmailUser})`);
 });
