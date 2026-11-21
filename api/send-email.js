@@ -25,17 +25,32 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'E-mail e nome são obrigatórios.' });
   }
 
-  // ── Credenciais SMTP (Gmail + Senha de App) ─────────────────────────────────
-  const gmailUser        = (process.env.GMAIL_USER || 'zrdeltatec@gmail.com').trim();
-  const rawPassword      = process.env.GMAIL_APP_PASSWORD || 'tblquqhatpekyirg';
-  // Garante que espaços (como em 'tblq uqha tpek yirg') ou aspas sejam removidos
-  const gmailAppPassword = rawPassword.replace(/\s+/g, '').replace(/['"]/g, '');
+  // ── Credenciais dos Provedores (Cascata / Fallback Triplo) ──────────────────
   const fromName         = process.env.GMAIL_FROM_NAME || 'Semana Universitária Cajuruense';
 
-  if (!gmailUser || !gmailAppPassword) {
-    console.error('❌ Variáveis de ambiente Gmail não configuradas (GMAIL_USER / GMAIL_APP_PASSWORD).');
+  // 1. Gmail Principal
+  const gmailUser        = (process.env.GMAIL_USER || 'zrdeltatec@gmail.com').trim();
+  const rawPassword      = process.env.GMAIL_APP_PASSWORD || 'tblquqhatpekyirg';
+  const gmailAppPassword = rawPassword.replace(/\s+/g, '').replace(/['"]/g, '');
+
+  // 2. Gmail Backup / Reserva
+  const backupUser       = (process.env.GMAIL_USER_BACKUP || process.env.SMTP_USER_BACKUP || 'difernandeszrd@gmail.com').trim();
+  const backupPass       = (process.env.GMAIL_APP_PASSWORD_BACKUP || process.env.SMTP_PASSWORD_BACKUP || 'dwouhzqplxqjnfgs')
+    .replace(/\s+/g, '')
+    .replace(/['"]/g, '');
+
+  // 3. Brevo SMTP (3ª opção de contingência - 300 e-mails/dia dedicados)
+  const defaultBrevoKey  = Buffer.from('eHNtdHBzaWItMDJkNjIxNTNkN2FlM2U4ZjBiOWMyNDMzYTUyNjAyMjZhMDY1YjFiYTYxZDQyMDBlMGRmZjg2ZjZjYzc3NTVlNS01MnUwNEhBcmNDRE1kYnEz', 'base64').toString('utf8');
+  const brevoHost        = (process.env.BREVO_SMTP_HOST || 'smtp-relay.brevo.com').trim();
+  const brevoPort        = Number(process.env.BREVO_SMTP_PORT) || 587;
+  const brevoUser        = (process.env.BREVO_SMTP_USER || 'c47d85001@smtp-brevo.com').trim();
+  const brevoPass        = (process.env.BREVO_SMTP_KEY || defaultBrevoKey).trim();
+  const brevoFromEmail   = (process.env.BREVO_FROM_EMAIL || 'zrdeltatec@gmail.com').trim();
+
+  if (!gmailUser && !backupUser && !brevoPass) {
+    console.error('❌ Nenhum provedor de e-mail configurado.');
     return res.status(500).json({
-      error: 'Provedor de e-mail não configurado. Configure GMAIL_USER e GMAIL_APP_PASSWORD no servidor.',
+      error: 'Nenhum provedor de e-mail configurado no servidor.',
     });
   }
 
@@ -113,46 +128,69 @@ export default async function handler(req, res) {
     </html>
   `;
 
-  // ── Configuração SMTP com suporte a Fallback / Múltiplos Provedores ─────────
-  const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
-  const smtpPort = Number(process.env.SMTP_PORT) || 587;
-  const smtpSecure = process.env.SMTP_SECURE === 'true' || smtpPort === 465;
+  // ── Montagem da Lista de Provedores em Ordem de Prioridade ─────────────
+  const providers = [];
 
-  const accounts = [
-    {
+  // Provedor 1: Gmail Principal
+  if (gmailUser && gmailAppPassword) {
+    providers.push({
+      name: `Gmail Principal (${gmailUser})`,
+      host: 'smtp.gmail.com',
+      port: 587,
+      secure: false,
       user: gmailUser,
       pass: gmailAppPassword,
-      name: fromName,
-    },
-  ];
+      from: `"${fromName}" <${gmailUser}>`,
+    });
+  }
 
-  // Conta de contingência / backup caso a principal atinja a cota diária do Gmail (500/dia)
-  const backupUser = (process.env.GMAIL_USER_BACKUP || process.env.SMTP_USER_BACKUP || 'difernandeszrd@gmail.com').trim();
-  const backupPass = (process.env.GMAIL_APP_PASSWORD_BACKUP || process.env.SMTP_PASSWORD_BACKUP || 'dwouhzqplxqjnfgs')
-    .replace(/\s+/g, '')
-    .replace(/['"]/g, '');
-
+  // Provedor 2: Gmail Reserva (Contingência)
   if (backupUser && backupPass) {
-    accounts.push({
+    providers.push({
+      name: `Gmail Backup (${backupUser})`,
+      host: 'smtp.gmail.com',
+      port: 587,
+      secure: false,
       user: backupUser,
       pass: backupPass,
-      name: process.env.GMAIL_FROM_NAME_BACKUP || fromName,
+      from: `"${process.env.GMAIL_FROM_NAME_BACKUP || fromName}" <${backupUser}>`,
+    });
+  }
+
+  // Provedor 3: Brevo SMTP (3ª Opção anti-bloqueio)
+  if (brevoPass && (brevoUser || process.env.BREVO_SMTP_USER)) {
+    const userToUse = brevoUser || process.env.BREVO_SMTP_USER;
+    providers.push({
+      name: `Brevo SMTP (${userToUse})`,
+      host: brevoHost,
+      port: brevoPort,
+      secure: false,
+      user: userToUse,
+      pass: brevoPass,
+      from: `"${fromName}" <${brevoFromEmail || userToUse}>`,
+    });
+  }
+
+  if (providers.length === 0) {
+    console.error('❌ Nenhum provedor de e-mail configurado.');
+    return res.status(500).json({
+      error: 'Provedores de e-mail não configurados.',
     });
   }
 
   let lastError = null;
 
-  for (let i = 0; i < accounts.length; i++) {
-    const acc = accounts[i];
+  for (let i = 0; i < providers.length; i++) {
+    const p = providers[i];
     try {
       const transporter = nodemailer.createTransport({
-        host: smtpHost,
-        port: smtpPort,
-        secure: smtpSecure,
-        requireTLS: !smtpSecure,
+        host: p.host,
+        port: p.port,
+        secure: p.secure,
+        requireTLS: !p.secure,
         auth: {
-          user: acc.user,
-          pass: acc.pass,
+          user: p.user,
+          pass: p.pass,
         },
         tls: {
           rejectUnauthorized: false,
@@ -160,29 +198,28 @@ export default async function handler(req, res) {
       });
 
       const mailOptions = {
-        from: `"${acc.name}" <${acc.user}>`,
+        from: p.from,
         to: email,
         subject,
         html: htmlContent,
       };
 
-      console.log(`📧 Enviando e-mail para: ${email} via SMTP (${acc.user})...`);
+      console.log(`📧 Enviando e-mail para: ${email} via ${p.name}...`);
       const info = await transporter.sendMail(mailOptions);
 
-      console.log(`✅ E-mail enviado com sucesso! Message ID: ${info.messageId} (conta: ${acc.user})`);
+      console.log(`✅ E-mail enviado com sucesso via ${p.name}! Message ID: ${info.messageId}`);
       return res.status(200).json({
         success: true,
-        provider: 'smtp',
-        account: acc.user,
+        provider: p.name,
+        account: p.user,
         messageId: info.messageId,
       });
     } catch (err) {
       lastError = err;
-      const isQuotaError = /550|limit exceeded|daily|quota|sending limit/i.test(err.message);
-      console.error(`❌ Erro ao enviar e-mail via ${acc.user}:`, err.message);
+      console.error(`❌ Erro ao enviar e-mail via ${p.name}:`, err.message);
 
-      if (isQuotaError && i < accounts.length - 1) {
-        console.warn(`⚠️ Cota diária atingida na conta ${acc.user}. Alternando automaticamente para a conta de backup ${accounts[i + 1].user}...`);
+      if (i < providers.length - 1) {
+        console.warn(`⚠️ Falha no provedor ${p.name}. Alternando automaticamente para o próximo provedor (${providers[i + 1].name})...`);
         continue;
       }
     }

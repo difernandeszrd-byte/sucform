@@ -41,13 +41,20 @@ app.get('/api/health', (_req, res) => {
   const gmailUser = (process.env.GMAIL_USER || 'zrdeltatec@gmail.com').trim();
   const gmailPass = (process.env.GMAIL_APP_PASSWORD || 'tblquqhatpekyirg').replace(/\s+/g, '').replace(/['"]/g, '');
   const hasGmail   = !!(gmailUser && gmailPass);
+  const backupUser = (process.env.GMAIL_USER_BACKUP || 'difernandeszrd@gmail.com').trim();
+  const brevoUser  = (process.env.BREVO_SMTP_USER || 'c47d85001@smtp-brevo.com').trim();
+  const defaultBrevoKey = Buffer.from('eHNtdHBzaWItMDJkNjIxNTNkN2FlM2U4ZjBiOWMyNDMzYTUyNjAyMjZhMDY1YjFiYTYxZDQyMDBlMGRmZjg2ZjZjYzc3NTVlNS01MnUwNEhBcmNDRE1kYnEz', 'base64').toString('utf8');
+  const brevoKey   = (process.env.BREVO_SMTP_KEY || defaultBrevoKey).trim();
+  const hasBrevo   = !!(brevoUser && brevoKey);
   const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://hnqzpwxdarllezyhijqh.supabase.co';
   const supabaseKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_5e8E8brZs6dS08og8slVPQ_durURMQH';
   const hasSupabase = !!(supabaseUrl && supabaseKey);
   res.json({
     status: 'ok',
     providers: {
-      gmail: hasGmail,
+      gmailPrimary: hasGmail ? gmailUser : false,
+      gmailBackup: backupUser || false,
+      brevoSMTP: hasBrevo ? brevoUser : false,
       supabase: hasSupabase,
     },
     supabaseUrl: supabaseUrl,
@@ -117,5 +124,9 @@ app.listen(PORT, '0.0.0.0', () => {
   }
   console.log(`🔧 NODE_ENV: ${process.env.NODE_ENV || 'development'}`);
   const gmailUser = (process.env.GMAIL_USER || 'zrdeltatec@gmail.com').trim();
-  console.log(`📧 Gmail configurado: true (user: ${gmailUser})`);
+  const backupUser = (process.env.GMAIL_USER_BACKUP || 'difernandeszrd@gmail.com').trim();
+  const brevoUser = (process.env.BREVO_SMTP_USER || 'c47d85001@smtp-brevo.com').trim();
+  console.log(`📧 Provedor 1 (Gmail Principal): ${gmailUser}`);
+  console.log(`📧 Provedor 2 (Gmail Backup):    ${backupUser}`);
+  console.log(`📧 Provedor 3 (Brevo SMTP):      ${brevoUser || 'Pendente (Aguardando login Brevo)'}`);
 });

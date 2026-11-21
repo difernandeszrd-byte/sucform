@@ -9,6 +9,9 @@ GMAIL_APP_PASSWORD = "tblquqhatpekyirg"
 GMAIL_USER_BACKUP = "difernandeszrd@gmail.com"
 GMAIL_APP_PASSWORD_BACKUP = "dwouhzqplxqjnfgs"
 GMAIL_FROM_NAME = "Semana Universitária Cajuruense"
+BREVO_SMTP_HOST = "smtp-relay.brevo.com"
+BREVO_SMTP_PORT = "587"
+BREVO_SMTP_USER = "c47d85001@smtp-brevo.com"
 
 # Pacotes explícitos: apenas node + npm, sem caddy
 [phases.setup]

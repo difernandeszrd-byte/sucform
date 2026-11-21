@@ -33,6 +33,9 @@ ENV GMAIL_APP_PASSWORD=tblquqhatpekyirg
 ENV GMAIL_USER_BACKUP=difernandeszrd@gmail.com
 ENV GMAIL_APP_PASSWORD_BACKUP=dwouhzqplxqjnfgs
 ENV GMAIL_FROM_NAME=Semana Universitária Cajuruense
+ENV BREVO_SMTP_HOST=smtp-relay.brevo.com
+ENV BREVO_SMTP_PORT=587
+ENV BREVO_SMTP_USER=c47d85001@smtp-brevo.com
 
 EXPOSE 3000
 
