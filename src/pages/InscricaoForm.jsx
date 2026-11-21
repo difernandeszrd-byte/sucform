@@ -297,9 +297,9 @@ export default function InscricaoForm() {
             <div className="email-notice-card info">
               <Mail size={22} className="email-notice-icon" />
               <div style={{ flex: 1 }}>
-                <div className="email-notice-title">E-mail Cadastrado: {submittedData.email}</div>
+                <div className="email-notice-title">E-mail Registrado: {submittedData.email}</div>
                 <div className="email-notice-desc">
-                  Seu cadastro foi salvo no banco de dados. {submittedData.emailResult?.message ? `(${submittedData.emailResult.message})` : ''}
+                  Sua inscrição está 100% garantida e salva com sucesso no sistema. O comprovante por e-mail será enviado em breve pela organização.
                 </div>
               </div>
               <button

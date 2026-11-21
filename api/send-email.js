@@ -113,40 +113,89 @@ export default async function handler(req, res) {
     </html>
   `;
 
-  // ── Transporter Nodemailer com Gmail SMTP ────────────────────────────────────
-  try {
-    const transporter = nodemailer.createTransport({
-      host: 'smtp.gmail.com',
-      port: 587,
-      secure: false,    // STARTTLS (mais compatível que SSL porta 465)
-      requireTLS: true,
-      auth: {
-        user: gmailUser,
-        pass: gmailAppPassword,
-      },
-      tls: {
-        rejectUnauthorized: false, // necessário em alguns ambientes com proxy/certificado self-signed
-      },
+  // ── Configuração SMTP com suporte a Fallback / Múltiplos Provedores ─────────
+  const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
+  const smtpPort = Number(process.env.SMTP_PORT) || 587;
+  const smtpSecure = process.env.SMTP_SECURE === 'true' || smtpPort === 465;
+
+  const accounts = [
+    {
+      user: gmailUser,
+      pass: gmailAppPassword,
+      name: fromName,
+    },
+  ];
+
+  // Conta de contingência / backup caso a principal atinja a cota diária do Gmail (500/dia)
+  const backupUser = (process.env.GMAIL_USER_BACKUP || process.env.SMTP_USER_BACKUP || '').trim();
+  const backupPass = (process.env.GMAIL_APP_PASSWORD_BACKUP || process.env.SMTP_PASSWORD_BACKUP || '')
+    .replace(/\s+/g, '')
+    .replace(/['"]/g, '');
+
+  if (backupUser && backupPass) {
+    accounts.push({
+      user: backupUser,
+      pass: backupPass,
+      name: process.env.GMAIL_FROM_NAME_BACKUP || fromName,
     });
-
-    const mailOptions = {
-      from: `"${fromName}" <${gmailUser}>`,
-      to: email,
-      subject,
-      html: htmlContent,
-    };
-
-    console.log(`📧 Enviando e-mail para: ${email} via Gmail SMTP (Senha de App)...`);
-    const info = await transporter.sendMail(mailOptions);
-
-    console.log(`✅ E-mail enviado com sucesso! Message ID: ${info.messageId}`);
-    return res.status(200).json({
-      success: true,
-      provider: 'gmail_smtp_app_password',
-      messageId: info.messageId,
-    });
-  } catch (err) {
-    console.error('❌ Erro ao enviar e-mail via Gmail SMTP:', err.message);
-    return res.status(500).json({ error: `Erro no envio via Gmail SMTP: ${err.message}` });
   }
+
+  let lastError = null;
+
+  for (let i = 0; i < accounts.length; i++) {
+    const acc = accounts[i];
+    try {
+      const transporter = nodemailer.createTransport({
+        host: smtpHost,
+        port: smtpPort,
+        secure: smtpSecure,
+        requireTLS: !smtpSecure,
+        auth: {
+          user: acc.user,
+          pass: acc.pass,
+        },
+        tls: {
+          rejectUnauthorized: false,
+        },
+      });
+
+      const mailOptions = {
+        from: `"${acc.name}" <${acc.user}>`,
+        to: email,
+        subject,
+        html: htmlContent,
+      };
+
+      console.log(`📧 Enviando e-mail para: ${email} via SMTP (${acc.user})...`);
+      const info = await transporter.sendMail(mailOptions);
+
+      console.log(`✅ E-mail enviado com sucesso! Message ID: ${info.messageId} (conta: ${acc.user})`);
+      return res.status(200).json({
+        success: true,
+        provider: 'smtp',
+        account: acc.user,
+        messageId: info.messageId,
+      });
+    } catch (err) {
+      lastError = err;
+      const isQuotaError = /550|limit exceeded|daily|quota|sending limit/i.test(err.message);
+      console.error(`❌ Erro ao enviar e-mail via ${acc.user}:`, err.message);
+
+      if (isQuotaError && i < accounts.length - 1) {
+        console.warn(`⚠️ Cota diária atingida na conta ${acc.user}. Alternando automaticamente para a conta de backup ${accounts[i + 1].user}...`);
+        continue;
+      }
+    }
+  }
+
+  const isDailyLimit = /550|limit exceeded|daily|quota/i.test(lastError?.message || '');
+  const friendlyMsg = isDailyLimit
+    ? 'Limite diário de envio do Gmail atingido (500 e-mails/dia). A inscrição foi salva com sucesso no banco de dados. Os e-mails pendentes podem ser reenviados pelo painel admin após o reset de 24h ou configurando uma conta de backup.'
+    : `Erro no envio via SMTP: ${lastError?.message || 'Falha desconhecida'}`;
+
+  return res.status(500).json({
+    error: friendlyMsg,
+    code: isDailyLimit ? 'DAILY_LIMIT_EXCEEDED' : 'SMTP_ERROR',
+    detail: lastError?.message,
+  });
 }
